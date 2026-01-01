@@ -1,4 +1,5 @@
 #!/bin/bash
 # Quick stats viewer
 cd "$(dirname "$0")"
-python3 stats.py "$@"
+source venv/bin/activate 2>/dev/null || true
+python stats.py "$@"
