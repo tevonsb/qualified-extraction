@@ -1,0 +1,10 @@
+/Users/tevonstrand-brown/Desktop/qualified-extraction/quantified-core/target/debug/deps/shellexpand-ccd53b15a588f0ef.d: /Users/tevonstrand-brown/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/shellexpand-3.1.1/src/lib.rs /Users/tevonstrand-brown/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/shellexpand-3.1.1/src/strings.rs /Users/tevonstrand-brown/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/shellexpand-3.1.1/src/wtraits.rs /Users/tevonstrand-brown/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/shellexpand-3.1.1/src/funcs.rs
+
+/Users/tevonstrand-brown/Desktop/qualified-extraction/quantified-core/target/debug/deps/libshellexpand-ccd53b15a588f0ef.rlib: /Users/tevonstrand-brown/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/shellexpand-3.1.1/src/lib.rs /Users/tevonstrand-brown/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/shellexpand-3.1.1/src/strings.rs /Users/tevonstrand-brown/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/shellexpand-3.1.1/src/wtraits.rs /Users/tevonstrand-brown/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/shellexpand-3.1.1/src/funcs.rs
+
+/Users/tevonstrand-brown/Desktop/qualified-extraction/quantified-core/target/debug/deps/libshellexpand-ccd53b15a588f0ef.rmeta: /Users/tevonstrand-brown/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/shellexpand-3.1.1/src/lib.rs /Users/tevonstrand-brown/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/shellexpand-3.1.1/src/strings.rs /Users/tevonstrand-brown/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/shellexpand-3.1.1/src/wtraits.rs /Users/tevonstrand-brown/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/shellexpand-3.1.1/src/funcs.rs
+
+/Users/tevonstrand-brown/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/shellexpand-3.1.1/src/lib.rs:
+/Users/tevonstrand-brown/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/shellexpand-3.1.1/src/strings.rs:
+/Users/tevonstrand-brown/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/shellexpand-3.1.1/src/wtraits.rs:
+/Users/tevonstrand-brown/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/shellexpand-3.1.1/src/funcs.rs:

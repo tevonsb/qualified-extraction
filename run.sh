@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Qualified Extraction - One-click runner
+# Qualified Extraction - One-click runner (Rust version)
 #
 # Usage:
 #   ./run.sh           # Run all collectors and show stats
@@ -9,22 +9,29 @@
 
 cd "$(dirname "$0")"
 
-# Activate virtual environment if it exists
-if [ -d "venv" ]; then
-    source venv/bin/activate
-fi
-
 echo ""
 echo "╔══════════════════════════════════════════════════════════╗"
-echo "║              QUALIFIED EXTRACTION                        ║"
+echo "║              QUALIFIED EXTRACTION (RUST)                 ║"
 echo "╚══════════════════════════════════════════════════════════╝"
 echo ""
 
+# Build the Rust binary if needed
+if [ ! -f "quantified-core/target/release/quantified-core" ]; then
+    echo "Building Rust binary (first time only)..."
+    cd quantified-core
+    cargo build --release
+    cd ..
+    echo ""
+fi
+
 # Run extraction
-python extract.py "$@"
+./quantified-core/target/release/quantified-core "$@"
 
 # If no args provided, show stats after extraction
 if [ $# -eq 0 ]; then
     echo ""
-    python stats.py
+    if [ -d "venv" ]; then
+        source venv/bin/activate 2>/dev/null
+    fi
+    python3 stats.py
 fi

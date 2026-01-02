@@ -23,3 +23,6 @@ ENV/
 .vscode/
 *.swp
 *.swo
+
+# Claude AI context
+claude.md

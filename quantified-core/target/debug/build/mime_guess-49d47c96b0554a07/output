@@ -1,0 +1,1 @@
+cargo:rustc-env=MIME_TYPES_GENERATED_PATH=/Users/tevonstrand-brown/Desktop/qualified-extraction/quantified-core/target/debug/build/mime_guess-49d47c96b0554a07/out/mime_types_generated.rs

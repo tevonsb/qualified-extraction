@@ -34,12 +34,6 @@ No external Python packages required - uses only the standard library.
    - Add your terminal app (Terminal.app, iTerm, etc.)
    - Restart the terminal
 
-3. (Optional) Copy your knowledgeC.db to Desktop:
-   ```bash
-   cp ~/Library/Application\ Support/Knowledge/knowledgeC.db ~/Desktop/
-   ```
-   The extractor checks `~/Desktop/knowledgeC.db` first, then falls back to the system location.
-
 ## Usage
 
 ### Extract Data
@@ -48,12 +42,6 @@ Run the extraction to collect data from all sources:
 
 ```bash
 ./run.sh
-```
-
-Or directly with Python:
-
-```bash
-python3 extract.py
 ```
 
 Output is saved to `data/unified.db`.
@@ -69,12 +57,6 @@ Output is saved to `data/unified.db`.
 ./stats.sh messages     # Messaging stats
 ./stats.sh bluetooth    # Device connections
 ./stats.sh all          # Everything
-```
-
-Or with Python:
-
-```bash
-python3 stats.py [command]
 ```
 
 ## Project Structure
