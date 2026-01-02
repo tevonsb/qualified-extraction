@@ -3,8 +3,8 @@ Collector for Apple Podcasts listening history.
 """
 
 import sqlite3
-from pathlib import Path
-from .base import BaseCollector, make_hash
+
+from .base import BaseCollector
 
 
 class PodcastsCollector(BaseCollector):
@@ -54,11 +54,21 @@ class PodcastsCollector(BaseCollector):
             record_hash = uuid  # uuid is already unique
 
             try:
-                self.unified_db.execute("""
+                self.unified_db.execute(
+                    """
                     INSERT INTO podcast_shows
                     (record_hash, title, author, feed_url, subscribed_at, episode_count)
                     VALUES (?, ?, ?, ?, ?, ?)
-                """, (record_hash, title, author, feed_url, subscribed_at, episode_count))
+                """,
+                    (
+                        record_hash,
+                        title,
+                        author,
+                        feed_url,
+                        subscribed_at,
+                        episode_count,
+                    ),
+                )
                 self.records_added += 1
             except sqlite3.IntegrityError:
                 self.records_skipped += 1
@@ -88,8 +98,18 @@ class PodcastsCollector(BaseCollector):
         """)
 
         for row in cursor:
-            (pk, uuid, title, show_title, show_uuid, duration,
-             playhead, play_count, last_played, pub_date) = row
+            (
+                pk,
+                uuid,
+                title,
+                show_title,
+                show_uuid,
+                duration,
+                playhead,
+                play_count,
+                last_played,
+                pub_date,
+            ) = row
 
             if not uuid:
                 continue
@@ -99,13 +119,25 @@ class PodcastsCollector(BaseCollector):
             record_hash = uuid  # uuid is already unique
 
             try:
-                self.unified_db.execute("""
+                self.unified_db.execute(
+                    """
                     INSERT INTO podcast_episodes
                     (record_hash, episode_title, show_title, show_uuid, duration_seconds,
                      played_seconds, play_count, last_played_at, published_at)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, (record_hash, title, show_title, show_uuid, duration,
-                      playhead, play_count, last_played_at, published_at))
+                """,
+                    (
+                        record_hash,
+                        title,
+                        show_title,
+                        show_uuid,
+                        duration,
+                        playhead,
+                        play_count,
+                        last_played_at,
+                        published_at,
+                    ),
+                )
                 self.records_added += 1
             except sqlite3.IntegrityError:
                 self.records_skipped += 1

@@ -3,23 +3,22 @@ Collector for Chrome browser history.
 """
 
 import sqlite3
-from pathlib import Path
-from .base import BaseCollector, make_hash
 
+from .base import BaseCollector, make_hash
 
 # Chrome transition types (how user got to the page)
 TRANSITION_TYPES = {
-    0: 'link',           # Clicked a link
-    1: 'typed',          # Typed URL in address bar
-    2: 'auto_bookmark',  # Clicked bookmark
-    3: 'auto_subframe',  # Subframe navigation
-    4: 'manual_subframe',
-    5: 'generated',      # Generated (e.g., by JS)
-    6: 'auto_toplevel',  # Automatic navigation
-    7: 'form_submit',    # Form submission
-    8: 'reload',         # Page reload
-    9: 'keyword',        # Keyword search
-    10: 'keyword_generated',
+    0: "link",  # Clicked a link
+    1: "typed",  # Typed URL in address bar
+    2: "auto_bookmark",  # Clicked bookmark
+    3: "auto_subframe",  # Subframe navigation
+    4: "manual_subframe",
+    5: "generated",  # Generated (e.g., by JS)
+    6: "auto_toplevel",  # Automatic navigation
+    7: "form_submit",  # Form submission
+    8: "reload",  # Page reload
+    9: "keyword",  # Keyword search
+    10: "keyword_generated",
 }
 
 
@@ -74,17 +73,27 @@ class ChromeCollector(BaseCollector):
                 duration_seconds = duration / 1_000_000
 
             # Get transition type name (lower bits contain the type)
-            transition_type = TRANSITION_TYPES.get(transition & 0xFF, 'other')
+            transition_type = TRANSITION_TYPES.get(transition & 0xFF, "other")
 
             # Use visit_time as part of hash since it's microsecond precision
-            record_hash = make_hash(url, visit_time, 'chrome')
+            record_hash = make_hash(url, visit_time, "chrome")
 
             try:
-                self.unified_db.execute("""
+                self.unified_db.execute(
+                    """
                     INSERT INTO web_visits
                     (record_hash, url, title, visit_time, visit_duration_seconds, transition_type, browser)
                     VALUES (?, ?, ?, ?, ?, ?, 'chrome')
-                """, (record_hash, url, title, timestamp, duration_seconds, transition_type))
+                """,
+                    (
+                        record_hash,
+                        url,
+                        title,
+                        timestamp,
+                        duration_seconds,
+                        transition_type,
+                    ),
+                )
                 self.records_added += 1
             except sqlite3.IntegrityError:
                 self.records_skipped += 1

@@ -3,8 +3,8 @@ Collector for Apple Messages (iMessage/SMS) from chat.db
 """
 
 import sqlite3
-from pathlib import Path
-from .base import BaseCollector, make_hash
+
+from .base import BaseCollector
 
 
 class MessagesCollector(BaseCollector):
@@ -54,11 +54,20 @@ class MessagesCollector(BaseCollector):
             record_hash = guid  # guid is already unique
 
             try:
-                self.unified_db.execute("""
+                self.unified_db.execute(
+                    """
                     INSERT INTO chats
                     (record_hash, chat_identifier, display_name, participant_count, last_message_time)
                     VALUES (?, ?, ?, ?, ?)
-                """, (record_hash, identifier, display_name, participants, last_message_time))
+                """,
+                    (
+                        record_hash,
+                        identifier,
+                        display_name,
+                        participants,
+                        last_message_time,
+                    ),
+                )
                 self.records_added += 1
             except sqlite3.IntegrityError:
                 self.records_skipped += 1
@@ -92,8 +101,19 @@ class MessagesCollector(BaseCollector):
         """)
 
         for row in cursor:
-            (rowid, guid, text, is_from_me, date, date_read, date_delivered,
-             handle_id, chat_guid, service, attachment_count) = row
+            (
+                rowid,
+                guid,
+                text,
+                is_from_me,
+                date,
+                date_read,
+                date_delivered,
+                handle_id,
+                chat_guid,
+                service,
+                attachment_count,
+            ) = row
 
             if not guid:
                 continue
@@ -109,13 +129,26 @@ class MessagesCollector(BaseCollector):
             record_hash = guid  # guid is already unique
 
             try:
-                self.unified_db.execute("""
+                self.unified_db.execute(
+                    """
                     INSERT INTO messages
                     (record_hash, text, is_from_me, timestamp, date_read, date_delivered,
                      handle_id, chat_id, service, has_attachment)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, (record_hash, text, is_from_me, timestamp, read_time, delivered_time,
-                      handle_id, chat_guid, service, has_attachment))
+                """,
+                    (
+                        record_hash,
+                        text,
+                        is_from_me,
+                        timestamp,
+                        read_time,
+                        delivered_time,
+                        handle_id,
+                        chat_guid,
+                        service,
+                        has_attachment,
+                    ),
+                )
                 self.records_added += 1
             except sqlite3.IntegrityError:
                 self.records_skipped += 1

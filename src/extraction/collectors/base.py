@@ -2,13 +2,13 @@
 Base collector class with common utilities.
 """
 
-import sqlite3
-import shutil
 import hashlib
 import os
-from pathlib import Path
+import shutil
+import sqlite3
 from abc import ABC, abstractmethod
 from datetime import datetime
+from pathlib import Path
 
 # Apple's epoch starts at 2001-01-01 00:00:00 UTC
 APPLE_EPOCH_OFFSET = 978307200
@@ -20,8 +20,8 @@ CHROME_EPOCH_OFFSET = 11644473600
 def make_hash(*args) -> str:
     """Create a consistent hash from multiple values (handles None)."""
     # Convert all args to strings, using empty string for None
-    parts = [str(arg) if arg is not None else '' for arg in args]
-    combined = '|'.join(parts)
+    parts = [str(arg) if arg is not None else "" for arg in args]
+    combined = "|".join(parts)
     return hashlib.sha256(combined.encode()).hexdigest()[:32]
 
 
@@ -49,11 +49,13 @@ class BaseCollector(ABC):
                     if dest.exists():
                         dest.unlink()
                     shutil.copy2(expanded, dest)
-                    print(f"  ✓ Copied fresh {self.name} database ({self._format_size(dest)})")
+                    print(
+                        f"  ✓ Copied fresh {self.name} database ({self._format_size(dest)})"
+                    )
                     return dest
                 except PermissionError:
                     print(f"  ✗ Permission denied: {expanded}")
-                    print(f"    Grant Full Disk Access to Terminal in System Settings")
+                    print("    Grant Full Disk Access to Terminal in System Settings")
                     return None
                 except Exception as e:
                     print(f"  ✗ Failed to copy: {e}")
@@ -65,7 +67,7 @@ class BaseCollector(ABC):
     def _format_size(self, path: Path) -> str:
         """Format file size for display."""
         size = path.stat().st_size
-        for unit in ['B', 'KB', 'MB', 'GB']:
+        for unit in ["B", "KB", "MB", "GB"]:
             if size < 1024:
                 return f"{size:.1f} {unit}"
             size /= 1024
@@ -98,29 +100,46 @@ class BaseCollector(ABC):
 
     def get_last_extraction_time(self) -> int | None:
         """Get the timestamp of the last successful extraction for this source."""
-        cursor = self.unified_db.execute("""
+        cursor = self.unified_db.execute(
+            """
             SELECT MAX(completed_at) FROM extraction_runs
             WHERE source = ? AND status = 'completed'
-        """, (self.name,))
+        """,
+            (self.name,),
+        )
         result = cursor.fetchone()
         return result[0] if result and result[0] else None
 
     def start_extraction_run(self) -> int:
         """Record the start of an extraction run."""
-        cursor = self.unified_db.execute("""
+        cursor = self.unified_db.execute(
+            """
             INSERT INTO extraction_runs (started_at, source, status)
             VALUES (?, ?, 'running')
-        """, (int(datetime.now().timestamp()), self.name))
+        """,
+            (int(datetime.now().timestamp()), self.name),
+        )
         self.unified_db.commit()
+        if not cursor.lastrowid:
+            return 0
         return cursor.lastrowid
 
-    def complete_extraction_run(self, run_id: int, status: str = 'completed'):
+    def complete_extraction_run(self, run_id: int, status: str = "completed"):
         """Record the completion of an extraction run."""
-        self.unified_db.execute("""
+        self.unified_db.execute(
+            """
             UPDATE extraction_runs
             SET completed_at = ?, records_added = ?, records_skipped = ?, status = ?
             WHERE id = ?
-        """, (int(datetime.now().timestamp()), self.records_added, self.records_skipped, status, run_id))
+        """,
+            (
+                int(datetime.now().timestamp()),
+                self.records_added,
+                self.records_skipped,
+                status,
+                run_id,
+            ),
+        )
         self.unified_db.commit()
 
     @abstractmethod
@@ -133,9 +152,9 @@ class BaseCollector(ABC):
 
     def run(self) -> bool:
         """Run the full extraction pipeline."""
-        print(f"\n{'='*50}")
+        print(f"\n{'=' * 50}")
         print(f"Extracting: {self.name}")
-        print('='*50)
+        print("=" * 50)
 
         # Copy source database
         source_db_path = self.copy_source_db()
@@ -148,13 +167,15 @@ class BaseCollector(ABC):
         try:
             # Run extraction
             success = self.extract()
-            status = 'completed' if success else 'failed'
+            status = "completed" if success else "failed"
             self.complete_extraction_run(run_id, status)
 
-            print(f"  Added: {self.records_added}, Skipped (duplicates): {self.records_skipped}")
+            print(
+                f"  Added: {self.records_added}, Skipped (duplicates): {self.records_skipped}"
+            )
             return success
 
         except Exception as e:
             print(f"  ✗ Extraction failed: {e}")
-            self.complete_extraction_run(run_id, 'failed')
+            self.complete_extraction_run(run_id, "failed")
             raise

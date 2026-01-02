@@ -3,7 +3,7 @@ Collector for Apple's knowledgeC.db (Screen Time, App Usage, Bluetooth, etc.)
 """
 
 import sqlite3
-from pathlib import Path
+
 from .base import BaseCollector, make_hash
 
 
@@ -74,11 +74,22 @@ class KnowledgeCCollector(BaseCollector):
             record_hash = make_hash(bundle_id, start_time, device_id)
 
             try:
-                self.unified_db.execute("""
+                self.unified_db.execute(
+                    """
                     INSERT INTO app_usage
                     (record_hash, bundle_id, start_time, end_time, duration_seconds, device_id, device_model)
                     VALUES (?, ?, ?, ?, ?, ?, ?)
-                """, (record_hash, bundle_id, start_time, end_time, duration, device_id, device_model))
+                """,
+                    (
+                        record_hash,
+                        bundle_id,
+                        start_time,
+                        end_time,
+                        duration,
+                        device_id,
+                        device_model,
+                    ),
+                )
                 self.records_added += 1
             except sqlite3.IntegrityError:
                 self.records_skipped += 1
@@ -119,11 +130,23 @@ class KnowledgeCCollector(BaseCollector):
             record_hash = make_hash(address, start_time)
 
             try:
-                self.unified_db.execute("""
+                self.unified_db.execute(
+                    """
                     INSERT INTO bluetooth_connections
                     (record_hash, device_name, device_address, device_type, product_id, start_time, end_time, duration_seconds)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                """, (record_hash, name, address, device_type, product_id, start_time, end_time, duration))
+                """,
+                    (
+                        record_hash,
+                        name,
+                        address,
+                        device_type,
+                        product_id,
+                        start_time,
+                        end_time,
+                        duration,
+                    ),
+                )
                 self.records_added += 1
             except sqlite3.IntegrityError:
                 self.records_skipped += 1
@@ -155,16 +178,19 @@ class KnowledgeCCollector(BaseCollector):
 
             # Use bundle_id from source, fall back to event type if it looks like a bundle
             app_bundle = bundle_id or event_type
-            if not app_bundle or app_bundle in ('Receive', 'Dismiss'):
+            if not app_bundle or app_bundle in ("Receive", "Dismiss"):
                 continue  # Skip if no app identifier
 
             record_hash = make_hash(app_bundle, timestamp, event_type)
 
             try:
-                self.unified_db.execute("""
+                self.unified_db.execute(
+                    """
                     INSERT INTO notifications (record_hash, bundle_id, event_type, timestamp)
                     VALUES (?, ?, ?, ?)
-                """, (record_hash, app_bundle, event_type, timestamp))
+                """,
+                    (record_hash, app_bundle, event_type, timestamp),
+                )
                 self.records_added += 1
             except sqlite3.IntegrityError:
                 self.records_skipped += 1
@@ -199,10 +225,13 @@ class KnowledgeCCollector(BaseCollector):
             record_hash = make_hash(intent_class, bundle_id, timestamp)
 
             try:
-                self.unified_db.execute("""
+                self.unified_db.execute(
+                    """
                     INSERT INTO intents (record_hash, intent_class, intent_verb, bundle_id, timestamp)
                     VALUES (?, ?, ?, ?, ?)
-                """, (record_hash, intent_class, intent_verb, bundle_id, timestamp))
+                """,
+                    (record_hash, intent_class, intent_verb, bundle_id, timestamp),
+                )
                 self.records_added += 1
             except sqlite3.IntegrityError:
                 self.records_skipped += 1
@@ -239,10 +268,13 @@ class KnowledgeCCollector(BaseCollector):
             record_hash = make_hash(start_time, is_backlit)
 
             try:
-                self.unified_db.execute("""
+                self.unified_db.execute(
+                    """
                     INSERT INTO display_state (record_hash, is_backlit, start_time, end_time, duration_seconds)
                     VALUES (?, ?, ?, ?, ?)
-                """, (record_hash, is_backlit, start_time, end_time, duration))
+                """,
+                    (record_hash, is_backlit, start_time, end_time, duration),
+                )
                 self.records_added += 1
             except sqlite3.IntegrityError:
                 self.records_skipped += 1
