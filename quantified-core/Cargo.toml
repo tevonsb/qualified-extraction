@@ -23,3 +23,7 @@ crate-type = ["lib", "cdylib", "staticlib"]
 [[bin]]
 name = "quantified-core"
 path = "src/bin/cli.rs"
+
+[[bin]]
+name = "generate_bindings"
+path = "src/bin/generate_bindings.rs"
