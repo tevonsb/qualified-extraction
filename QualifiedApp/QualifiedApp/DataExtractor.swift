@@ -2,7 +2,7 @@
 //  DataExtractor.swift
 //  QualifiedApp
 //
-//  Handles running the Python extraction scripts to collect data
+//  Handles running the Rust extraction library to collect data
 //
 
 import Foundation
@@ -20,17 +20,21 @@ class DataExtractor: ObservableObject {
         let errors: [String]
     }
 
-    private let projectDir: URL
-    private let pythonPath: String
+    private let dataDirectory: String
 
     init() {
-        // Find project directory
-        projectDir = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent("Desktop")
-            .appendingPathComponent("qualified-extraction")
+        // Set up data directory in Application Support
+        let appSupport = FileManager.default.urls(
+            for: .applicationSupportDirectory,
+            in: .userDomainMask
+        ).first!
 
-        // Use system python3
-        pythonPath = "/usr/bin/python3"
+        let dataDir = appSupport.appendingPathComponent("QuantifiedSelf/data")
+
+        // Create directory if it doesn't exist
+        try? FileManager.default.createDirectory(at: dataDir, withIntermediateDirectories: true)
+
+        dataDirectory = dataDir.path
     }
 
     func runExtraction(completion: @escaping (Bool) -> Void) {
@@ -43,91 +47,85 @@ class DataExtractor: ObservableObject {
         isExtracting = true
         extractionLog.removeAll()
         addLog("🚀 Starting extraction...")
-        addLog("📂 Project directory: \(projectDir.path)")
+        addLog("📂 Data directory: \(dataDirectory)")
 
         let startTime = Date()
 
-        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-            guard let self = self else { return }
+        Task {
+            do {
+                // Create extraction configuration
+                let config = ExtractionConfig(
+                    outputDir: dataDirectory,
+                    enabledSources: [.messages, .chrome, .knowledgeC, .podcasts],
+                    verbose: true
+                )
 
-            let success = self.executeExtraction()
-            let duration = Date().timeIntervalSince(startTime)
+                addLog("🔧 Configured extraction for all data sources")
+                addLog("📊 Starting data collection...")
 
-            DispatchQueue.main.async {
-                self.isExtracting = false
+                // Run extraction using QuantifiedCore
+                let report = try await QuantifiedCore.extractAllData(config: config)
 
-                if success {
-                    self.addLog("✅ Extraction completed in \(String(format: "%.1f", duration))s")
-                } else {
-                    self.addLog("❌ Extraction failed")
+                let duration = Date().timeIntervalSince(startTime)
+
+                // Process results
+                await MainActor.run {
+                    self.processExtractionReport(report, duration: duration)
+                    self.isExtracting = false
+
+                    if report.success {
+                        self.addLog("✅ Extraction completed in \(String(format: "%.1f", duration))s")
+                        completion(true)
+                    } else {
+                        self.addLog("❌ Extraction failed: \(report.errorMessage ?? "Unknown error")")
+                        completion(false)
+                    }
                 }
+            } catch {
+                await MainActor.run {
+                    let duration = Date().timeIntervalSince(startTime)
+                    self.addLog("❌ Extraction error: \(error.localizedDescription)")
+                    self.isExtracting = false
 
-                completion(success)
+                    // Create failed result
+                    self.lastExtractionResult = ExtractionResult(
+                        success: false,
+                        recordsAdded: 0,
+                        recordsSkipped: 0,
+                        duration: duration,
+                        errors: [error.localizedDescription]
+                    )
+
+                    completion(false)
+                }
             }
         }
     }
 
-    private func executeExtraction() -> Bool {
-        let extractScript = projectDir.appendingPathComponent("extract.py")
+    private func processExtractionReport(_ report: ExtractionReport, duration: TimeInterval) {
+        // Log each source result
+        for result in report.results {
+            let emoji = result.success ? "✓" : "✗"
+            addLog("\(emoji) \(result.sourceName): +\(result.recordsAdded) records, \(result.recordsSkipped) skipped")
 
-        guard FileManager.default.fileExists(atPath: extractScript.path) else {
-            addLog("❌ extract.py not found at \(extractScript.path)")
-            return false
-        }
-
-        addLog("📄 Running extract.py...")
-
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: pythonPath)
-        process.arguments = [extractScript.path]
-        process.currentDirectoryURL = projectDir
-
-        let outputPipe = Pipe()
-        let errorPipe = Pipe()
-
-        process.standardOutput = outputPipe
-        process.standardError = errorPipe
-
-        // Read output in real-time
-        outputPipe.fileHandleForReading.readabilityHandler = { [weak self] handle in
-            let data = handle.availableData
-            if let output = String(data: data, encoding: .utf8), !output.isEmpty {
-                DispatchQueue.main.async {
-                    self?.addLog(output.trimmingCharacters(in: .whitespacesAndNewlines))
-                }
+            if let error = result.errorMessage {
+                addLog("  ⚠️ \(error)")
             }
         }
 
-        errorPipe.fileHandleForReading.readabilityHandler = { [weak self] handle in
-            let data = handle.availableData
-            if let output = String(data: data, encoding: .utf8), !output.isEmpty {
-                DispatchQueue.main.async {
-                    self?.addLog("⚠️ \(output.trimmingCharacters(in: .whitespacesAndNewlines))")
-                }
-            }
-        }
+        // Create result summary
+        let errors = report.results.compactMap { $0.errorMessage }
 
-        do {
-            try process.run()
-            process.waitUntilExit()
+        lastExtractionResult = ExtractionResult(
+            success: report.success,
+            recordsAdded: Int(report.totalRecordsAdded),
+            recordsSkipped: Int(report.totalRecordsSkipped),
+            duration: duration,
+            errors: errors
+        )
 
-            // Clean up handlers
-            outputPipe.fileHandleForReading.readabilityHandler = nil
-            errorPipe.fileHandleForReading.readabilityHandler = nil
-
-            let exitCode = process.terminationStatus
-
-            if exitCode == 0 {
-                addLog("✓ Python script completed successfully")
-                return true
-            } else {
-                addLog("✗ Python script exited with code \(exitCode)")
-                return false
-            }
-        } catch {
-            addLog("❌ Failed to run Python script: \(error.localizedDescription)")
-            return false
-        }
+        // Summary log
+        addLog("📊 Total: \(report.totalRecordsAdded) new records, \(report.totalRecordsSkipped) duplicates")
     }
 
     private func addLog(_ message: String) {
@@ -141,25 +139,17 @@ class DataExtractor: ObservableObject {
         extractionLog.removeAll()
     }
 
-    // Check if Python and required scripts exist
+    // Check if data sources are accessible
     func checkRequirements() -> (isValid: Bool, message: String) {
-        // Check Python
-        guard FileManager.default.fileExists(atPath: pythonPath) else {
-            return (false, "Python3 not found at \(pythonPath)")
+        // Scan for available data sources
+        let sources = QuantifiedCore.scanDataSources()
+        let accessible = sources.filter { $0.accessible }
+
+        if accessible.isEmpty {
+            return (false, "No accessible data sources found. Grant Full Disk Access in System Settings.")
         }
 
-        // Check extract.py
-        let extractScript = projectDir.appendingPathComponent("extract.py")
-        guard FileManager.default.fileExists(atPath: extractScript.path) else {
-            return (false, "extract.py not found. Make sure the app is in the qualified-extraction directory.")
-        }
-
-        // Check src directory
-        let srcDir = projectDir.appendingPathComponent("src")
-        guard FileManager.default.fileExists(atPath: srcDir.path) else {
-            return (false, "src directory not found")
-        }
-
-        return (true, "All requirements met")
+        let sourceNames = accessible.map { $0.name }.joined(separator: ", ")
+        return (true, "Found \(accessible.count) accessible source(s): \(sourceNames)")
     }
 }
