@@ -152,7 +152,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/bash;
-			shellScript = "set -e\n\necho \"🦀 Building Rust library...\"\n\n# Navigate to Rust project\ncd \"${PROJECT_DIR}/..\"\nRUST_DIR=\"quantified-core\"\n\n# Determine build type\nif [ \"${CONFIGURATION}\" == \"Debug\" ]; then\n    BUILD_TYPE=\"\"\n    TARGET_DIR=\"debug\"\nelse\n    BUILD_TYPE=\"--release\"\n    TARGET_DIR=\"release\"\nfi\n\n# Build Rust library\ncd \"$RUST_DIR\"\ncargo build --lib $BUILD_TYPE\n\n# Copy dylib to app bundle\nDYLIB=\"target/${TARGET_DIR}/libquantified_core.dylib\"\nDEST=\"${BUILT_PRODUCTS_DIR}/${PRODUCT_NAME}.app/Contents/Frameworks\"\n\nmkdir -p \"$DEST\"\ncp \"$DYLIB\" \"$DEST/\"\n\necho \"✅ Rust library built and copied to app bundle\"\n";
+			shellScript = "set -e\n\n# Add cargo to PATH\nexport PATH=\"$HOME/.cargo/bin:$PATH\"\n\necho \"🦀 Building Rust library...\"\n\n# Navigate to Rust project\ncd \"${PROJECT_DIR}/..\"\nRUST_DIR=\"quantified-core\"\n\n# Determine build type\nif [ \"${CONFIGURATION}\" == \"Debug\" ]; then\n    BUILD_TYPE=\"\"\n    TARGET_DIR=\"debug\"\nelse\n    BUILD_TYPE=\"--release\"\n    TARGET_DIR=\"release\"\nfi\n\n# Build Rust library\ncd \"$RUST_DIR\"\ncargo build --lib $BUILD_TYPE\n\n# Copy dylib to app bundle\nDYLIB=\"target/${TARGET_DIR}/libquantified_core.dylib\"\nDEST=\"${BUILT_PRODUCTS_DIR}/${PRODUCT_NAME}.app/Contents/Frameworks\"\n\nmkdir -p \"$DEST\"\ncp \"$DYLIB\" \"$DEST/\"\n\necho \"✅ Rust library built and copied to app bundle\"\n";
 			showEnvVarsInLog = 1;
 		};
 /* End PBXShellScriptBuildPhase section */
