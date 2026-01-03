@@ -26,3 +26,4 @@ ENV/
 
 # Claude AI context
 claude.md
+COMPLETION_SUMMARY.md
