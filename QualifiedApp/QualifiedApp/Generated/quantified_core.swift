@@ -50,9 +50,11 @@ fileprivate extension ForeignBytes {
 
 fileprivate extension Data {
     init(rustBuffer: RustBuffer) {
-        // TODO: This copies the buffer. Can we read directly from a
-        // Rust buffer?
-        self.init(bytes: rustBuffer.data!, count: Int(rustBuffer.len))
+        self.init(
+            bytesNoCopy: rustBuffer.data!,
+            count: Int(rustBuffer.len),
+            deallocator: .none
+        )
     }
 }
 
@@ -168,10 +170,16 @@ fileprivate protocol FfiConverter {
 fileprivate protocol FfiConverterPrimitive: FfiConverter where FfiType == SwiftType { }
 
 extension FfiConverterPrimitive {
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
     public static func lift(_ value: FfiType) throws -> SwiftType {
         return value
     }
 
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
     public static func lower(_ value: SwiftType) -> FfiType {
         return value
     }
@@ -182,6 +190,9 @@ extension FfiConverterPrimitive {
 fileprivate protocol FfiConverterRustBuffer: FfiConverter where FfiType == RustBuffer {}
 
 extension FfiConverterRustBuffer {
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
     public static func lift(_ buf: RustBuffer) throws -> SwiftType {
         var reader = createReader(data: Data(rustBuffer: buf))
         let value = try read(from: &reader)
@@ -192,6 +203,9 @@ extension FfiConverterRustBuffer {
         return value
     }
 
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
     public static func lower(_ value: SwiftType) -> RustBuffer {
           var writer = createWriter()
           write(value, into: &writer)
@@ -382,6 +396,9 @@ fileprivate class UniffiHandleMap<T> {
 // Public interface members begin here.
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterUInt64: FfiConverterPrimitive {
     typealias FfiType = UInt64
     typealias SwiftType = UInt64
@@ -395,6 +412,9 @@ fileprivate struct FfiConverterUInt64: FfiConverterPrimitive {
     }
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterDouble: FfiConverterPrimitive {
     typealias FfiType = Double
     typealias SwiftType = Double
@@ -408,6 +428,9 @@ fileprivate struct FfiConverterDouble: FfiConverterPrimitive {
     }
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterBool : FfiConverter {
     typealias FfiType = Int8
     typealias SwiftType = Bool
@@ -429,6 +452,9 @@ fileprivate struct FfiConverterBool : FfiConverter {
     }
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterString: FfiConverter {
     typealias SwiftType = String
     typealias FfiType = RustBuffer
@@ -527,6 +553,9 @@ extension DataSourceInfo: Equatable, Hashable {
 }
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public struct FfiConverterTypeDataSourceInfo: FfiConverterRustBuffer {
     public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> DataSourceInfo {
         return
@@ -551,10 +580,16 @@ public struct FfiConverterTypeDataSourceInfo: FfiConverterRustBuffer {
 }
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeDataSourceInfo_lift(_ buf: RustBuffer) throws -> DataSourceInfo {
     return try FfiConverterTypeDataSourceInfo.lift(buf)
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeDataSourceInfo_lower(_ value: DataSourceInfo) -> RustBuffer {
     return FfiConverterTypeDataSourceInfo.lower(value)
 }
@@ -625,6 +660,9 @@ extension DatabaseStats: Equatable, Hashable {
 }
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public struct FfiConverterTypeDatabaseStats: FfiConverterRustBuffer {
     public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> DatabaseStats {
         return
@@ -651,10 +689,16 @@ public struct FfiConverterTypeDatabaseStats: FfiConverterRustBuffer {
 }
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeDatabaseStats_lift(_ buf: RustBuffer) throws -> DatabaseStats {
     return try FfiConverterTypeDatabaseStats.lift(buf)
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeDatabaseStats_lower(_ value: DatabaseStats) -> RustBuffer {
     return FfiConverterTypeDatabaseStats.lower(value)
 }
@@ -701,6 +745,9 @@ extension ExtractionConfig: Equatable, Hashable {
 }
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public struct FfiConverterTypeExtractionConfig: FfiConverterRustBuffer {
     public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ExtractionConfig {
         return
@@ -719,10 +766,16 @@ public struct FfiConverterTypeExtractionConfig: FfiConverterRustBuffer {
 }
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeExtractionConfig_lift(_ buf: RustBuffer) throws -> ExtractionConfig {
     return try FfiConverterTypeExtractionConfig.lift(buf)
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeExtractionConfig_lower(_ value: ExtractionConfig) -> RustBuffer {
     return FfiConverterTypeExtractionConfig.lower(value)
 }
@@ -787,6 +840,9 @@ extension ExtractionReport: Equatable, Hashable {
 }
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public struct FfiConverterTypeExtractionReport: FfiConverterRustBuffer {
     public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ExtractionReport {
         return
@@ -811,10 +867,16 @@ public struct FfiConverterTypeExtractionReport: FfiConverterRustBuffer {
 }
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeExtractionReport_lift(_ buf: RustBuffer) throws -> ExtractionReport {
     return try FfiConverterTypeExtractionReport.lift(buf)
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeExtractionReport_lower(_ value: ExtractionReport) -> RustBuffer {
     return FfiConverterTypeExtractionReport.lower(value)
 }
@@ -879,6 +941,9 @@ extension SourceResult: Equatable, Hashable {
 }
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public struct FfiConverterTypeSourceResult: FfiConverterRustBuffer {
     public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SourceResult {
         return
@@ -903,10 +968,16 @@ public struct FfiConverterTypeSourceResult: FfiConverterRustBuffer {
 }
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeSourceResult_lift(_ buf: RustBuffer) throws -> SourceResult {
     return try FfiConverterTypeSourceResult.lift(buf)
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeSourceResult_lower(_ value: SourceResult) -> RustBuffer {
     return FfiConverterTypeSourceResult.lower(value)
 }
@@ -926,6 +997,9 @@ public enum DataSourceType {
 }
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public struct FfiConverterTypeDataSourceType: FfiConverterRustBuffer {
     typealias SwiftType = DataSourceType
 
@@ -969,10 +1043,16 @@ public struct FfiConverterTypeDataSourceType: FfiConverterRustBuffer {
 }
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeDataSourceType_lift(_ buf: RustBuffer) throws -> DataSourceType {
     return try FfiConverterTypeDataSourceType.lift(buf)
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeDataSourceType_lower(_ value: DataSourceType) -> RustBuffer {
     return FfiConverterTypeDataSourceType.lower(value)
 }
@@ -1006,6 +1086,9 @@ public enum ExtractionError {
 }
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public struct FfiConverterTypeExtractionError: FfiConverterRustBuffer {
     typealias SwiftType = ExtractionError
 
@@ -1088,6 +1171,9 @@ extension ExtractionError: Foundation.LocalizedError {
     }
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionUInt64: FfiConverterRustBuffer {
     typealias SwiftType = UInt64?
 
@@ -1109,6 +1195,9 @@ fileprivate struct FfiConverterOptionUInt64: FfiConverterRustBuffer {
     }
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionString: FfiConverterRustBuffer {
     typealias SwiftType = String?
 
@@ -1130,6 +1219,9 @@ fileprivate struct FfiConverterOptionString: FfiConverterRustBuffer {
     }
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceTypeDataSourceInfo: FfiConverterRustBuffer {
     typealias SwiftType = [DataSourceInfo]
 
@@ -1152,6 +1244,9 @@ fileprivate struct FfiConverterSequenceTypeDataSourceInfo: FfiConverterRustBuffe
     }
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceTypeSourceResult: FfiConverterRustBuffer {
     typealias SwiftType = [SourceResult]
 
@@ -1174,6 +1269,9 @@ fileprivate struct FfiConverterSequenceTypeSourceResult: FfiConverterRustBuffer 
     }
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceTypeDataSourceType: FfiConverterRustBuffer {
     typealias SwiftType = [DataSourceType]
 

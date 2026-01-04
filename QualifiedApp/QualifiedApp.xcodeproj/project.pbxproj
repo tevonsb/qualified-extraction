@@ -13,7 +13,8 @@
 		A10000000000000000000007 /* DataExtractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000008 /* DataExtractor.swift */; };
 		A10000000000000000000009 /* DatabaseManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000010 /* DatabaseManager.swift */; };
 		A10000000000000000000011 /* StatsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000012 /* StatsViewModel.swift */; };
-		A10000000000000000000029 /* QuantifiedCore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000030 /* QuantifiedCore.swift */; };
+		A10000000000000000000040 /* quantified_core.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000041 /* quantified_core.swift */; };
+		A10000000000000000000044 /* libquantified_core.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = A10000000000000000000045 /* libquantified_core.dylib */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -25,7 +26,9 @@
 		A10000000000000000000008 /* DataExtractor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataExtractor.swift; sourceTree = "<group>"; };
 		A10000000000000000000010 /* DatabaseManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DatabaseManager.swift; sourceTree = "<group>"; };
 		A10000000000000000000012 /* StatsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsViewModel.swift; sourceTree = "<group>"; };
-		A10000000000000000000030 /* QuantifiedCore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuantifiedCore.swift; sourceTree = "<group>"; };
+		A10000000000000000000041 /* quantified_core.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Generated/quantified_core.swift; sourceTree = "<group>"; };
+		A10000000000000000000042 /* quantified_coreFFI.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Generated/quantified_coreFFI.h; sourceTree = "<group>"; };
+		A10000000000000000000045 /* libquantified_core.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libquantified_core.dylib; path = "QualifiedApp.app/Contents/Frameworks/libquantified_core.dylib"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -33,6 +36,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A10000000000000000000044 /* libquantified_core.dylib in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -44,6 +48,7 @@
 			children = (
 				A10000000000000000000017 /* QualifiedApp */,
 				A10000000000000000000018 /* Products */,
+				A10000000000000000000046 /* Frameworks */,
 			);
 			sourceTree = "<group>";
 		};
@@ -55,7 +60,9 @@
 				A10000000000000000000012 /* StatsViewModel.swift */,
 				A10000000000000000000008 /* DataExtractor.swift */,
 				A10000000000000000000010 /* DatabaseManager.swift */,
-				A10000000000000000000030 /* QuantifiedCore.swift */,
+
+				A10000000000000000000041 /* quantified_core.swift */,
+				A10000000000000000000042 /* quantified_coreFFI.h */,
 				A10000000000000000000006 /* Assets.xcassets */,
 				A10000000000000000000014 /* QualifiedApp.entitlements */,
 			);
@@ -70,6 +77,14 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
+		A10000000000000000000046 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				A10000000000000000000045 /* libquantified_core.dylib */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -77,6 +92,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = A10000000000000000000020 /* Build configuration list for PBXNativeTarget "QualifiedApp" */;
 			buildPhases = (
+				A10000000000000000000032 /* Generate UniFFI Swift Bindings */,
 				A10000000000000000000031 /* Build Rust Library */,
 				A10000000000000000000021 /* Sources */,
 				A10000000000000000000015 /* Frameworks */,
@@ -136,6 +152,28 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
+		A10000000000000000000032 /* Generate UniFFI Swift Bindings */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Generate UniFFI Swift Bindings";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(PROJECT_DIR)/QualifiedApp/Generated/quantified_core.swift",
+				"$(PROJECT_DIR)/QualifiedApp/Generated/quantified_coreFFI.h",
+				"$(PROJECT_DIR)/QualifiedApp/Generated/quantified_coreFFI.modulemap",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/bash;
+			shellScript = "set -e\n\n# Add cargo to PATH\nexport PATH=\"$HOME/.cargo/bin:$PATH\"\n\necho \"🧬 Generating UniFFI Swift bindings (Project Generated folder)...\"\n\n# Navigate to repo root\ncd \"${PROJECT_DIR}/..\"\nRUST_DIR=\"quantified-core\"\n\n# Determine build type\nif [ \"${CONFIGURATION}\" == \"Debug\" ]; then\n    BUILD_TYPE=\"\"\n    TARGET_DIR=\"debug\"\nelse\n    BUILD_TYPE=\"--release\"\n    TARGET_DIR=\"release\"\nfi\n\n# Build the Rust cdylib so `--library` mode can introspect it\ncd \"$RUST_DIR\"\ncargo build --lib $BUILD_TYPE\n\nLIB_PATH=\"target/${TARGET_DIR}/libquantified_core.dylib\"\n\n# Generate into the Xcode project sources directory so the file is compiled by the target.\nOUT_DIR=\"${PROJECT_DIR}/QualifiedApp/Generated\"\nmkdir -p \"$OUT_DIR\"\n\n# Generate Swift bindings + FFI header/modulemap from the compiled library\ncargo run --features=uniffi/cli --bin uniffi-bindgen -- generate \\\n  --library \"$LIB_PATH\" \\\n  --language swift \\\n  --out-dir \"$OUT_DIR\"\n\n# IMPORTANT: Do NOT strip the optional quantified_coreFFI import block from the generated Swift.\n# UniFFI's Swift bindings expect to import the Clang module described by quantified_coreFFI.modulemap.\n\necho \"✅ UniFFI bindings generated at: $OUT_DIR\"\n";
+			showEnvVarsInLog = 1;
+		};
 		A10000000000000000000031 /* Build Rust Library */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
@@ -167,7 +205,7 @@
 				A10000000000000000000007 /* DataExtractor.swift in Sources */,
 				A10000000000000000000009 /* DatabaseManager.swift in Sources */,
 				A10000000000000000000011 /* StatsViewModel.swift in Sources */,
-				A10000000000000000000029 /* QuantifiedCore.swift in Sources */,
+				A10000000000000000000040 /* quantified_core.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -183,6 +221,8 @@
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
 				CLANG_ENABLE_MODULES = YES;
+				HEADER_SEARCH_PATHS = "$(inherited) $(PROJECT_DIR)/QualifiedApp/Generated";
+				OTHER_SWIFT_FLAGS = "$(inherited) -Xcc -fmodule-map-file=$(PROJECT_DIR)/QualifiedApp/Generated/quantified_coreFFI.modulemap";
 				CLANG_ENABLE_OBJC_ARC = YES;
 				CLANG_ENABLE_OBJC_WEAK = YES;
 				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
@@ -232,7 +272,9 @@
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = macosx;
-				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited)";
+				SWIFT_INCLUDE_PATHS = "$(inherited) $(DERIVED_SOURCES_DIR)/uniffi";
+				SWIFT_INCLUDE_PATHS = "$(inherited) $(DERIVED_SOURCES_DIR)/uniffi";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 			};
 			name = Debug;
@@ -246,6 +288,8 @@
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
 				CLANG_ENABLE_MODULES = YES;
+				HEADER_SEARCH_PATHS = "$(inherited) $(PROJECT_DIR)/QualifiedApp/Generated";
+				OTHER_SWIFT_FLAGS = "$(inherited) -Xcc -fmodule-map-file=$(PROJECT_DIR)/QualifiedApp/Generated/quantified_coreFFI.modulemap";
 				CLANG_ENABLE_OBJC_ARC = YES;
 				CLANG_ENABLE_OBJC_WEAK = YES;
 				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
@@ -307,6 +351,10 @@
 					"$(inherited)",
 					"$(BUILT_PRODUCTS_DIR)/$(PRODUCT_NAME).app/Contents/Frameworks",
 				);
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(BUILT_PRODUCTS_DIR)/$(PRODUCT_NAME).app/Contents/Frameworks",
+				);
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -333,6 +381,10 @@
 				DEVELOPMENT_ASSET_PATHS = "";
 				ENABLE_PREVIEWS = YES;
 				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(BUILT_PRODUCTS_DIR)/$(PRODUCT_NAME).app/Contents/Frameworks",
+				);
+				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(BUILT_PRODUCTS_DIR)/$(PRODUCT_NAME).app/Contents/Frameworks",
 				);

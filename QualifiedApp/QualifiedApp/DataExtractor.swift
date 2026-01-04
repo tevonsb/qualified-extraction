@@ -2,154 +2,151 @@
 //  DataExtractor.swift
 //  QualifiedApp
 //
-//  Handles running the Rust extraction library to collect data
+//  Drives data extraction via the UniFFI-generated Swift bindings.
+//
+//  In Option A (generate at build time), the UniFFI-generated `quantified_core.swift` is generated into
+//  DerivedSources and compiled as part of this target. That means the API is available directly as
+//  top-level symbols/types in this module (no `quantified_core.` module prefix).
 //
 
 import Foundation
+import SwiftUI
 
-class DataExtractor: ObservableObject {
-    @Published var isExtracting = false
-    @Published var extractionLog: [String] = []
-    @Published var lastExtractionResult: ExtractionResult?
+/// A simple log entry for display in the UI.
+struct ExtractionLogEntry: Identifiable, Hashable {
+    let id = UUID()
+    let timestamp: Date
+    let message: String
+    let isError: Bool
+}
 
-    struct ExtractionResult {
-        let success: Bool
-        let recordsAdded: Int
-        let recordsSkipped: Int
-        let duration: TimeInterval
-        let errors: [String]
+/// Extraction orchestrator used by the UI.
+@MainActor
+final class DataExtractor: ObservableObject {
+    // MARK: - Published state (used by ContentView)
+
+    @Published var isExtracting: Bool = false
+    @Published var extractionLog: [ExtractionLogEntry] = []
+
+    /// Last extraction report (if any). Useful for debugging / future UI.
+    @Published var lastReport: ExtractionReport?
+
+    // MARK: - Configuration
+
+    /// Directory where `unified.db` will be created/updated.
+    ///
+    /// This should be a writable location for the app sandbox. The default uses Application Support.
+    var outputDirectory: URL {
+        let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+        let appSupport = base ?? FileManager.default.temporaryDirectory
+        return appSupport.appendingPathComponent("QualifiedApp", isDirectory: true)
     }
 
-    private let dataDirectory: String
+    // MARK: - Public API
 
-    init() {
-        // Set up data directory in Application Support
-        let appSupport = FileManager.default.urls(
-            for: .applicationSupportDirectory,
-            in: .userDomainMask
-        ).first!
-
-        let dataDir = appSupport.appendingPathComponent("QuantifiedSelf/data")
-
-        // Create directory if it doesn't exist
-        try? FileManager.default.createDirectory(at: dataDir, withIntermediateDirectories: true)
-
-        dataDirectory = dataDir.path
+    /// Runs extraction for the default set of sources supported by the Rust core.
+    ///
+    /// This is the primary entry point for the "Run Extraction" button.
+    func runExtraction() {
+        runExtraction(enabledSources: [.messages, .chrome, .knowledgeC, .podcasts], verbose: false)
     }
 
-    func runExtraction(completion: @escaping (Bool) -> Void) {
-        guard !isExtracting else {
-            addLog("⚠️ Extraction already in progress")
-            completion(false)
+    /// Runs extraction for a specific set of sources.
+    func runExtraction(enabledSources: [DataSourceType], verbose: Bool) {
+        guard !isExtracting else { return }
+
+        isExtracting = true
+        appendLog("Starting extraction…")
+        appendLog("Output directory: \(outputDirectory.path)")
+
+        Task {
+            // Do the blocking FFI call off the main thread.
+            do {
+                // Capture main-actor state before detaching to a background thread.
+                let outDir = self.outputDirectory.path
+                let enabledSourcesCopy = enabledSources
+                let verboseCopy = verbose
+
+                let report = try await Task.detached(priority: .userInitiated) { () throws -> ExtractionReport in
+                    let config = ExtractionConfig(
+                        outputDir: outDir,
+                        enabledSources: enabledSourcesCopy,
+                        verbose: verboseCopy
+                    )
+                    return try extractAllData(config: config)
+                }.value
+
+                await handleSuccess(report: report)
+            } catch {
+                await handleFailure(error: error)
+            }
+        }
+    }
+
+    /// Convenience: open-file-free "scan" to show what sources exist and are readable.
+    func scanSources() {
+        appendLog("Scanning for available sources…")
+        let infos = scanDataSources()
+
+        if infos.isEmpty {
+            appendLog("No sources found.")
             return
         }
 
-        isExtracting = true
-        extractionLog.removeAll()
-        addLog("🚀 Starting extraction...")
-        addLog("📂 Data directory: \(dataDirectory)")
-
-        let startTime = Date()
-
-        Task {
-            do {
-                // Create extraction configuration
-                let config = ExtractionConfig(
-                    outputDir: dataDirectory,
-                    enabledSources: [.messages, .chrome, .knowledgeC, .podcasts],
-                    verbose: true
-                )
-
-                addLog("🔧 Configured extraction for all data sources")
-                addLog("📊 Starting data collection...")
-
-                // Run extraction using QuantifiedCore
-                let report = try await QuantifiedCore.extractAllData(config: config)
-
-                let duration = Date().timeIntervalSince(startTime)
-
-                // Process results
-                await MainActor.run {
-                    self.processExtractionReport(report, duration: duration)
-                    self.isExtracting = false
-
-                    if report.success {
-                        self.addLog("✅ Extraction completed in \(String(format: "%.1f", duration))s")
-                        completion(true)
-                    } else {
-                        self.addLog("❌ Extraction failed: \(report.errorMessage ?? "Unknown error")")
-                        completion(false)
-                    }
-                }
-            } catch {
-                await MainActor.run {
-                    let duration = Date().timeIntervalSince(startTime)
-                    self.addLog("❌ Extraction error: \(error.localizedDescription)")
-                    self.isExtracting = false
-
-                    // Create failed result
-                    self.lastExtractionResult = ExtractionResult(
-                        success: false,
-                        recordsAdded: 0,
-                        recordsSkipped: 0,
-                        duration: duration,
-                        errors: [error.localizedDescription]
-                    )
-
-                    completion(false)
-                }
-            }
+        for info in infos {
+            let path = info.path ?? "(unknown path)"
+            appendLog("[\(info.sourceType)] accessible=\(info.accessible) path=\(path)")
         }
     }
 
-    private func processExtractionReport(_ report: ExtractionReport, duration: TimeInterval) {
-        // Log each source result
+    /// Queries Rust for database stats (counts) in the configured output directory.
+    func fetchDatabaseStats() async throws -> DatabaseStats {
+        // Capture main-actor state before detaching to a background thread.
+        let outDir = self.outputDirectory.path
+        return try await Task.detached(priority: .userInitiated) {
+            try getDatabaseStats(outputDir: outDir)
+        }.value
+    }
+
+    // MARK: - Private helpers
+
+    private func handleSuccess(report: ExtractionReport) async {
+        lastReport = report
+
+        appendLog("Extraction finished in \(String(format: "%.2f", report.durationSeconds))s")
+        appendLog("Total added: \(report.totalRecordsAdded), skipped: \(report.totalRecordsSkipped)")
+
         for result in report.results {
-            let emoji = result.success ? "✓" : "✗"
-            addLog("\(emoji) \(result.sourceName): +\(result.recordsAdded) records, \(result.recordsSkipped) skipped")
-
-            if let error = result.errorMessage {
-                addLog("  ⚠️ \(error)")
+            if result.success {
+                appendLog("[OK] \(result.sourceName): +\(result.recordsAdded) / skipped \(result.recordsSkipped)")
+            } else {
+                let msg = result.errorMessage ?? "Unknown error"
+                appendLog("[FAIL] \(result.sourceName): \(msg)", isError: true)
             }
         }
 
-        // Create result summary
-        let errors = report.results.compactMap { $0.errorMessage }
+        if report.success {
+            appendLog("Overall result: SUCCESS")
+        } else {
+            appendLog("Overall result: PARTIAL FAILURE (\(report.errorMessage ?? "Some sources failed") )", isError: true)
+        }
 
-        lastExtractionResult = ExtractionResult(
-            success: report.success,
-            recordsAdded: Int(report.totalRecordsAdded),
-            recordsSkipped: Int(report.totalRecordsSkipped),
-            duration: duration,
-            errors: errors
+        isExtracting = false
+    }
+
+    private func handleFailure(error: Error) async {
+        // If UniFFI threw a typed error, surface it nicely.
+        if let rustError = error as? ExtractionError {
+            appendLog("Extraction failed: \(rustError.localizedDescription)", isError: true)
+        } else {
+            appendLog("Extraction failed: \(error.localizedDescription)", isError: true)
+        }
+        isExtracting = false
+    }
+
+    private func appendLog(_ message: String, isError: Bool = false) {
+        extractionLog.append(
+            ExtractionLogEntry(timestamp: Date(), message: message, isError: isError)
         )
-
-        // Summary log
-        addLog("📊 Total: \(report.totalRecordsAdded) new records, \(report.totalRecordsSkipped) duplicates")
-    }
-
-    private func addLog(_ message: String) {
-        DispatchQueue.main.async { [weak self] in
-            self?.extractionLog.append(message)
-            print(message) // Also print to Xcode console
-        }
-    }
-
-    func clearLog() {
-        extractionLog.removeAll()
-    }
-
-    // Check if data sources are accessible
-    func checkRequirements() -> (isValid: Bool, message: String) {
-        // Scan for available data sources
-        let sources = QuantifiedCore.scanDataSources()
-        let accessible = sources.filter { $0.accessible }
-
-        if accessible.isEmpty {
-            return (false, "No accessible data sources found. Grant Full Disk Access in System Settings.")
-        }
-
-        let sourceNames = accessible.map { $0.name }.joined(separator: ", ")
-        return (true, "Found \(accessible.count) accessible source(s): \(sourceNames)")
     }
 }

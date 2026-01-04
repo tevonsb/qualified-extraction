@@ -348,13 +348,11 @@ struct ContentView: View {
     }
 
     private func runExtraction() {
-        dataExtractor.runExtraction { success in
-            if success {
-                // Refresh stats after successful extraction
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                    refreshStats()
-                }
-            }
+        dataExtractor.runExtraction()
+
+        // Refresh stats shortly after kicking off extraction. The extractor runs async and updates its own log.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            refreshStats()
         }
     }
 
@@ -435,7 +433,7 @@ struct ExtractionLogView: View {
                 Spacer()
 
                 Button("Clear") {
-                    extractor.clearLog()
+                    extractor.extractionLog.removeAll()
                 }
                 .disabled(extractor.extractionLog.isEmpty)
 
@@ -452,9 +450,10 @@ struct ExtractionLogView: View {
             ScrollView {
                 ScrollViewReader { proxy in
                     VStack(alignment: .leading, spacing: 4) {
-                        ForEach(Array(extractor.extractionLog.enumerated()), id: \.offset) { index, line in
-                            Text(line)
+                        ForEach(Array(extractor.extractionLog.enumerated()), id: \.offset) { index, entry in
+                            Text(entry.message)
                                 .font(.system(.body, design: .monospaced))
+                                .foregroundColor(entry.isError ? .red : .primary)
                                 .textSelection(.enabled)
                                 .id(index)
                         }

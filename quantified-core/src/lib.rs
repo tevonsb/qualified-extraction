@@ -6,9 +6,9 @@
 //! # Example
 //!
 //! ```no_run
-//! use quantified_core::{ExtractionConfig, extract_all, CollectorType};
+//! use quantified_core::{CoreExtractionConfig, extract_all};
 //!
-//! let config = ExtractionConfig::default();
+//! let config = CoreExtractionConfig::default();
 //! let results = extract_all(&config).expect("Extraction failed");
 //!
 //! for result in results {

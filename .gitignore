@@ -12,8 +12,7 @@ venv/
 ENV/
 
 # Rust
-target/
-Cargo.lock
+**/target/
 **/*.rs.bk
 
 # Swift/Xcode
@@ -31,6 +30,11 @@ DerivedData/
 !default.mode2v3
 *.perspectivev3
 !default.perspectivev3
+
+# UniFFI-generated bindings (generated during Xcode build; do not commit)
+QualifiedApp/QualifiedApp/Generated/quantified_core.swift
+QualifiedApp/QualifiedApp/Generated/quantified_coreFFI.h
+QualifiedApp/QualifiedApp/Generated/quantified_coreFFI.modulemap
 
 # OS
 .DS_Store
