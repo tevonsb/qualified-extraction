@@ -92,7 +92,7 @@ fn main() {
         }
         Some(name) => {
             // Extract specific source
-            let collector_type = match CollectorType::from_str(name) {
+            let collector_type = match CollectorType::from_string(name) {
                 Some(ct) => ct,
                 None => {
                     eprintln!("Error: Unknown collector: {}", name);

@@ -28,7 +28,7 @@ fn main() {
 
     // Try to use uniffi-bindgen if available
     let status = Command::new("cargo")
-        .args(&[
+        .args([
             "run",
             "--bin",
             "uniffi-bindgen",

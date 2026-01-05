@@ -15,6 +15,14 @@
 		A10000000000000000000011 /* StatsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000012 /* StatsViewModel.swift */; };
 		A10000000000000000000040 /* quantified_core.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000041 /* quantified_core.swift */; };
 		A10000000000000000000044 /* libquantified_core.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = A10000000000000000000045 /* libquantified_core.dylib */; };
+		A10000000000000000000050 /* DateRangePicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000051 /* DateRangePicker.swift */; };
+		A10000000000000000000052 /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000053 /* DashboardView.swift */; };
+		A10000000000000000000054 /* OverviewTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000055 /* OverviewTab.swift */; };
+		A10000000000000000000056 /* MessagesTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000057 /* MessagesTab.swift */; };
+		A10000000000000000000058 /* MessageDetailSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000059 /* MessageDetailSheet.swift */; };
+		A10000000000000000000060 /* BrowserTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000061 /* BrowserTab.swift */; };
+		A10000000000000000000062 /* BrowserDetailSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000063 /* BrowserDetailSheet.swift */; };
+		A10000000000000000000064 /* SystemTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000065 /* SystemTab.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -23,12 +31,21 @@
 		A10000000000000000000004 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		A10000000000000000000006 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A10000000000000000000014 /* QualifiedApp.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = QualifiedApp.entitlements; sourceTree = "<group>"; };
+		A10000000000000000000047 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		A10000000000000000000008 /* DataExtractor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataExtractor.swift; sourceTree = "<group>"; };
 		A10000000000000000000010 /* DatabaseManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DatabaseManager.swift; sourceTree = "<group>"; };
 		A10000000000000000000012 /* StatsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsViewModel.swift; sourceTree = "<group>"; };
 		A10000000000000000000041 /* quantified_core.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Generated/quantified_core.swift; sourceTree = "<group>"; };
 		A10000000000000000000042 /* quantified_coreFFI.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Generated/quantified_coreFFI.h; sourceTree = "<group>"; };
 		A10000000000000000000045 /* libquantified_core.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libquantified_core.dylib; path = "QualifiedApp.app/Contents/Frameworks/libquantified_core.dylib"; sourceTree = BUILT_PRODUCTS_DIR; };
+		A10000000000000000000051 /* DateRangePicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DateRangePicker.swift; sourceTree = "<group>"; };
+		A10000000000000000000053 /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
+		A10000000000000000000055 /* OverviewTab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverviewTab.swift; sourceTree = "<group>"; };
+		A10000000000000000000057 /* MessagesTab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessagesTab.swift; sourceTree = "<group>"; };
+		A10000000000000000000059 /* MessageDetailSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessageDetailSheet.swift; sourceTree = "<group>"; };
+		A10000000000000000000061 /* BrowserTab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserTab.swift; sourceTree = "<group>"; };
+		A10000000000000000000063 /* BrowserDetailSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserDetailSheet.swift; sourceTree = "<group>"; };
+		A10000000000000000000065 /* SystemTab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemTab.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -60,13 +77,29 @@
 				A10000000000000000000012 /* StatsViewModel.swift */,
 				A10000000000000000000008 /* DataExtractor.swift */,
 				A10000000000000000000010 /* DatabaseManager.swift */,
-
+				A10000000000000000000048 /* Views */,
 				A10000000000000000000041 /* quantified_core.swift */,
 				A10000000000000000000042 /* quantified_coreFFI.h */,
 				A10000000000000000000006 /* Assets.xcassets */,
 				A10000000000000000000014 /* QualifiedApp.entitlements */,
+				A10000000000000000000047 /* Info.plist */,
 			);
 			path = QualifiedApp;
+			sourceTree = "<group>";
+		};
+		A10000000000000000000048 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				A10000000000000000000051 /* DateRangePicker.swift */,
+				A10000000000000000000053 /* DashboardView.swift */,
+				A10000000000000000000055 /* OverviewTab.swift */,
+				A10000000000000000000057 /* MessagesTab.swift */,
+				A10000000000000000000059 /* MessageDetailSheet.swift */,
+				A10000000000000000000061 /* BrowserTab.swift */,
+				A10000000000000000000063 /* BrowserDetailSheet.swift */,
+				A10000000000000000000065 /* SystemTab.swift */,
+			);
+			path = Views;
 			sourceTree = "<group>";
 		};
 		A10000000000000000000018 /* Products */ = {
@@ -206,6 +239,14 @@
 				A10000000000000000000009 /* DatabaseManager.swift in Sources */,
 				A10000000000000000000011 /* StatsViewModel.swift in Sources */,
 				A10000000000000000000040 /* quantified_core.swift in Sources */,
+				A10000000000000000000050 /* DateRangePicker.swift in Sources */,
+				A10000000000000000000052 /* DashboardView.swift in Sources */,
+				A10000000000000000000054 /* OverviewTab.swift in Sources */,
+				A10000000000000000000056 /* MessagesTab.swift in Sources */,
+				A10000000000000000000058 /* MessageDetailSheet.swift in Sources */,
+				A10000000000000000000060 /* BrowserTab.swift in Sources */,
+				A10000000000000000000062 /* BrowserDetailSheet.swift in Sources */,
+				A10000000000000000000064 /* SystemTab.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -355,7 +396,7 @@
 					"$(inherited)",
 					"$(BUILT_PRODUCTS_DIR)/$(PRODUCT_NAME).app/Contents/Frameworks",
 				);
-				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = QualifiedApp/Info.plist;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -388,7 +429,7 @@
 					"$(inherited)",
 					"$(BUILT_PRODUCTS_DIR)/$(PRODUCT_NAME).app/Contents/Frameworks",
 				);
-				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = QualifiedApp/Info.plist;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",

@@ -35,7 +35,7 @@ pub use uniffi_api::{
 };
 
 use rusqlite::Connection;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 // uniffi scaffolding - must be at crate root for proc-macro approach
 uniffi::setup_scaffolding!();
@@ -71,7 +71,7 @@ pub fn extract_source(
 }
 
 /// Open the unified database, creating it if it doesn't exist
-pub fn open_unified_db(output_dir: &PathBuf) -> Result<Connection> {
+pub fn open_unified_db(output_dir: &Path) -> Result<Connection> {
     let db_path = output_dir.join("unified.db");
     let conn = Connection::open(&db_path)?;
 
@@ -93,55 +93,7 @@ pub fn find_source_db(paths: &[String]) -> Option<PathBuf> {
     None
 }
 
-/// Get statistics about the unified database (legacy function, internal use only)
-fn get_legacy_database_stats(output_dir: &PathBuf) -> Result<LegacyDatabaseStats> {
-    let db_path = output_dir.join("unified.db");
-    if !db_path.exists() {
-        return Err(Error::DatabaseNotFound(db_path));
-    }
 
-    let conn = Connection::open(&db_path)?;
-
-    let app_usage_count: i64 = conn.query_row(
-        "SELECT COUNT(*) FROM app_usage",
-        [],
-        |row| row.get(0),
-    )?;
-
-    let web_visits_count: i64 = conn.query_row(
-        "SELECT COUNT(*) FROM web_visits",
-        [],
-        |row| row.get(0),
-    )?;
-
-    let messages_count: i64 = conn.query_row(
-        "SELECT COUNT(*) FROM messages",
-        [],
-        |row| row.get(0),
-    )?;
-
-    let podcast_episodes_count: i64 = conn.query_row(
-        "SELECT COUNT(*) FROM podcast_episodes",
-        [],
-        |row| row.get(0),
-    )?;
-
-    Ok(LegacyDatabaseStats {
-        app_usage_count: app_usage_count as usize,
-        web_visits_count: web_visits_count as usize,
-        messages_count: messages_count as usize,
-        podcast_episodes_count: podcast_episodes_count as usize,
-    })
-}
-
-/// Statistics about the unified database (legacy struct, internal use only)
-#[derive(Debug, Clone)]
-struct LegacyDatabaseStats {
-    pub app_usage_count: usize,
-    pub web_visits_count: usize,
-    pub messages_count: usize,
-    pub podcast_episodes_count: usize,
-}
 
 #[cfg(test)]
 mod tests {

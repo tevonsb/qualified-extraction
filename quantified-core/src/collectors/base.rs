@@ -18,6 +18,13 @@ pub trait Collector {
     /// Extract data from the source database into the unified database
     fn extract(&mut self, source_conn: &Connection) -> Result<()>;
 
+    /// Best-effort: resolve which source database path would be used for this collector.
+    ///
+    /// This is intended for debugging/UI reporting ("unknown path") and does not copy or open the DB.
+    fn resolved_source_path_for_debug(&self) -> Option<String> {
+        self.find_source_db().map(|p| p.display().to_string())
+    }
+
     /// Run the complete extraction pipeline
     fn run(&mut self) -> Result<ExtractionResult> {
         let result = ExtractionResult::new(self.name().to_string());
@@ -106,7 +113,12 @@ pub trait Collector {
         self.config().verbose
     }
 
-    /// Find the source database from the list of possible paths
+    /// Find the source database from the list of possible paths.
+    ///
+    /// This first checks explicit paths (including those provided via `custom_source_paths`),
+    /// then falls back to best-effort discovery for known "moving target" sources such as:
+    /// - Apple Podcasts (group container ID varies across installs)
+    /// - Chrome (Profile directories vary: Default, Profile 1, Profile 2, ...)
     fn find_source_db(&self) -> Option<PathBuf> {
         let paths = if let Some(custom_paths) = &self.config().custom_source_paths {
             custom_paths.clone()
@@ -114,13 +126,32 @@ pub trait Collector {
             self.source_paths()
         };
 
-        for path in paths {
-            let expanded = shellexpand::tilde(&path);
+        // 1) Exact-path check (fast path)
+        for path in &paths {
+            let expanded = shellexpand::tilde(path);
             let path_buf = PathBuf::from(expanded.as_ref());
             if path_buf.exists() {
                 return Some(path_buf);
             }
         }
+
+        // 2) Heuristic discovery for certain collectors when exact paths fail.
+        let name = self.name().to_lowercase();
+
+        // Apple Podcasts: scan `~/Library/Group Containers/*groups.com.apple.podcasts/Documents/MTLibrary.sqlite`
+        if name == "podcasts" {
+            if let Some(found) = discover_podcasts_db() {
+                return Some(found);
+            }
+        }
+
+        // Chrome: scan profiles under `~/Library/Application Support/Google/Chrome/`
+        if name == "chrome" {
+            if let Some(found) = discover_chrome_history_db() {
+                return Some(found);
+            }
+        }
+
         None
     }
 
@@ -194,6 +225,97 @@ fn format_file_size(path: &PathBuf) -> Result<String> {
     }
 
     Ok(format!("{:.1} {}", size, units[unit_idx]))
+}
+
+/// Best-effort discovery for Apple Podcasts database.
+///
+/// Apple Podcasts stores `MTLibrary.sqlite` inside a group container whose ID can vary.
+/// We scan `~/Library/Group Containers/` for directories ending with `.groups.com.apple.podcasts`,
+/// then look for `Documents/MTLibrary.sqlite`.
+fn discover_podcasts_db() -> Option<PathBuf> {
+    let group_containers = PathBuf::from(shellexpand::tilde("~/Library/Group Containers").as_ref());
+    if !group_containers.is_dir() {
+        return None;
+    }
+
+    let entries = fs::read_dir(&group_containers).ok()?;
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if !path.is_dir() {
+            continue;
+        }
+
+        let dir_name = match path.file_name().and_then(|s| s.to_str()) {
+            Some(s) => s,
+            None => continue,
+        };
+
+        // Common real-world format: `243LU875E5.groups.com.apple.podcasts`
+        if !dir_name.ends_with(".groups.com.apple.podcasts") {
+            continue;
+        }
+
+        let candidate = path.join("Documents").join("MTLibrary.sqlite");
+        if candidate.exists() {
+            return Some(candidate);
+        }
+    }
+
+    None
+}
+
+/// Best-effort discovery for Google Chrome History database.
+///
+/// Chrome keeps per-profile History DBs in:
+/// `~/Library/Application Support/Google/Chrome/<ProfileDir>/History`
+/// where `<ProfileDir>` can be `Default`, `Profile 1`, `Profile 2`, etc.
+///
+/// We scan the Chrome directory and pick the most recently modified History file.
+fn discover_chrome_history_db() -> Option<PathBuf> {
+    let chrome_root = PathBuf::from(
+        shellexpand::tilde("~/Library/Application Support/Google/Chrome").as_ref(),
+    );
+    if !chrome_root.is_dir() {
+        return None;
+    }
+
+    let mut best: Option<(PathBuf, std::time::SystemTime)> = None;
+
+    let entries = fs::read_dir(&chrome_root).ok()?;
+    for entry in entries.flatten() {
+        let profile_dir = entry.path();
+        if !profile_dir.is_dir() {
+            continue;
+        }
+
+        // Only consider typical Chrome profile directories
+        let profile_name = match profile_dir.file_name().and_then(|s| s.to_str()) {
+            Some(s) => s,
+            None => continue,
+        };
+
+        let looks_like_profile =
+            profile_name == "Default" || profile_name.starts_with("Profile ") || profile_name == "Guest Profile";
+
+        if !looks_like_profile {
+            continue;
+        }
+
+        let history = profile_dir.join("History");
+        if !history.exists() {
+            continue;
+        }
+
+        let modified = fs::metadata(&history).and_then(|m| m.modified()).ok();
+
+        match (modified, &best) {
+            (Some(m), Some((_, best_m))) if m > *best_m => best = Some((history, m)),
+            (Some(m), None) => best = Some((history, m)),
+            _ => {}
+        }
+    }
+
+    best.map(|(p, _)| p)
 }
 
 /// Base collector struct with common fields

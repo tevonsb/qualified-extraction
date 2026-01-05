@@ -185,7 +185,7 @@ impl CollectorType {
     }
 
     /// Parse collector type from string
-    pub fn from_str(s: &str) -> Option<CollectorType> {
+    pub fn from_string(s: &str) -> Option<CollectorType> {
         match s.to_lowercase().as_str() {
             "messages" => Some(CollectorType::Messages),
             "chrome" => Some(CollectorType::Chrome),
@@ -209,7 +209,19 @@ impl CollectorType {
                 "~/Library/Application Support/Knowledge/knowledgeC.db".to_string(),
             ],
             CollectorType::Podcasts => vec![
+                // Apple Podcasts has moved containers/paths across macOS/iOS versions.
+                //
+                // We try multiple known locations; the collector will pick the first that exists.
+                //
+                // Common current path (sandboxed group container; container ID can vary by OS/user/account):
                 "~/Library/Group Containers/243LU875E5.groups.com.apple.podcasts/Documents/MTLibrary.sqlite".to_string(),
+                // Alternative container IDs observed in the wild (keep best-effort; harmless if missing):
+                "~/Library/Group Containers/group.com.apple.podcasts/Documents/MTLibrary.sqlite".to_string(),
+                "~/Library/Group Containers/*.groups.com.apple.podcasts/Documents/MTLibrary.sqlite".to_string(),
+                // Some installs place the DB under Library/Application Support:
+                "~/Library/Application Support/Podcasts/MTLibrary.sqlite".to_string(),
+                // Legacy-style locations (rare, but worth probing):
+                "~/Library/Containers/com.apple.podcasts/Data/Library/Application Support/Podcasts/MTLibrary.sqlite".to_string(),
             ],
         }
     }

@@ -13,7 +13,11 @@ struct ContentView: View {
     @State private var statsViewModel: StatsViewModel?
 
     @State private var showingExtractionLog = false
+    @State private var showingDashboard = false
     @State private var selectedTab = 0
+
+    // Track when extraction completes so we can refresh stats at the right time.
+    @State private var lastExtractionState: Bool = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -34,6 +38,17 @@ struct ContentView: View {
                         .scaleEffect(0.8)
                         .padding(.trailing, 8)
                 }
+
+                Button(action: {
+                    showingDashboard = true
+                }) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "chart.xyaxis.line")
+                        Text("Dashboard")
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(!databaseManager.isConnected)
 
                 Button(action: {
                     showingExtractionLog.toggle()
@@ -76,21 +91,35 @@ struct ContentView: View {
 
                             Spacer()
 
-                            Button(action: runExtraction) {
-                                HStack {
-                                    if dataExtractor.isExtracting {
-                                        ProgressView()
-                                            .scaleEffect(0.7)
-                                            .frame(width: 16, height: 16)
-                                    } else {
-                                        Image(systemName: "play.fill")
+                            HStack(spacing: 10) {
+                                Button(action: {
+                                    dataExtractor.scanSources()
+                                    showingExtractionLog = true
+                                }) {
+                                    HStack {
+                                        Image(systemName: "magnifyingglass")
+                                        Text("Scan Sources")
                                     }
-                                    Text(dataExtractor.isExtracting ? "Extracting..." : "Run Extraction")
                                 }
-                                .frame(width: 150)
+                                .buttonStyle(.bordered)
+                                .disabled(dataExtractor.isExtracting)
+
+                                Button(action: runExtraction) {
+                                    HStack {
+                                        if dataExtractor.isExtracting {
+                                            ProgressView()
+                                                .scaleEffect(0.7)
+                                                .frame(width: 16, height: 16)
+                                        } else {
+                                            Image(systemName: "play.fill")
+                                        }
+                                        Text(dataExtractor.isExtracting ? "Extracting..." : "Run Extraction")
+                                    }
+                                    .frame(width: 150)
+                                }
+                                .buttonStyle(.borderedProminent)
+                                .disabled(dataExtractor.isExtracting || !databaseManager.isConnected)
                             }
-                            .buttonStyle(.borderedProminent)
-                            .disabled(dataExtractor.isExtracting || !databaseManager.isConnected)
                         }
                     }
                     .padding()
@@ -117,6 +146,28 @@ struct ContentView: View {
                                     Text(databaseManager.isConnected ? "Connected" : "Disconnected")
                                         .font(.subheadline)
                                         .foregroundColor(databaseManager.isConnected ? .green : .red)
+                                }
+
+                                if let err = databaseManager.lastError, !err.isEmpty {
+                                    HStack(alignment: .top, spacing: 6) {
+                                        Image(systemName: "exclamationmark.triangle.fill")
+                                            .foregroundColor(.red)
+                                        Text(err)
+                                            .font(.caption)
+                                            .foregroundColor(.red)
+                                            .fixedSize(horizontal: false, vertical: true)
+                                    }
+                                }
+
+                                HStack {
+                                    Text("Unified DB:")
+                                        .font(.subheadline)
+                                        .foregroundColor(.secondary)
+                                    Text(databaseManager.databasePath)
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                        .lineLimit(1)
+                                        .truncationMode(.middle)
                                 }
 
                                 HStack {
@@ -339,21 +390,38 @@ struct ContentView: View {
         .sheet(isPresented: $showingExtractionLog) {
             ExtractionLogView(extractor: dataExtractor)
         }
+        .sheet(isPresented: $showingDashboard) {
+            DashboardView(databaseManager: databaseManager)
+                .frame(minWidth: 1000, minHeight: 700)
+        }
         .onAppear {
+            // Initialize our completion tracker.
+            lastExtractionState = dataExtractor.isExtracting
+
             if statsViewModel == nil {
                 statsViewModel = StatsViewModel(databaseManager: databaseManager)
             }
             refreshStats()
+        }
+        .onChange(of: dataExtractor.isExtracting) { isExtracting in
+            // When extraction transitions from running -> not running, refresh stats.
+            if lastExtractionState == true && isExtracting == false {
+                // Add a UI-visible log marker and refresh counts after extraction completes.
+                // The extractor already logs per-source results; this ensures stats are refreshed
+                // after the underlying unified database has been updated.
+                refreshStats()
+            }
+
+            lastExtractionState = isExtracting
         }
     }
 
     private func runExtraction() {
         dataExtractor.runExtraction()
 
-        // Refresh stats shortly after kicking off extraction. The extractor runs async and updates its own log.
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-            refreshStats()
-        }
+        // Don't refresh immediately; the extractor runs async.
+        // Stats will be refreshed automatically when extraction finishes (see `onChange` above).
+        showingExtractionLog = true
     }
 
     private func refreshStats() {

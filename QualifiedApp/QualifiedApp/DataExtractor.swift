@@ -12,6 +12,11 @@
 import Foundation
 import SwiftUI
 
+// NOTE:
+// UniFFI-generated Swift bindings are schema-sensitive. Do not attempt to "reflect" fields that
+// may not exist in the generated structs at runtime, as this can mask the real failure.
+// Instead, log what we definitively know: scan results and the configured output directory.
+
 /// A simple log entry for display in the UI.
 struct ExtractionLogEntry: Identifiable, Hashable {
     let id = UUID()
@@ -86,6 +91,10 @@ final class DataExtractor: ObservableObject {
     /// Convenience: open-file-free "scan" to show what sources exist and are readable.
     func scanSources() {
         appendLog("Scanning for available sources…")
+
+        // Always log the output directory so you can correlate “no data” with the actual `unified.db`.
+        appendLog("Output directory: \(outputDirectory.path)")
+
         let infos = scanDataSources()
 
         if infos.isEmpty {

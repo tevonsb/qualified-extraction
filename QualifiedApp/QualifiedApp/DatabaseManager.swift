@@ -9,24 +9,30 @@ import Foundation
 import SQLite3
 
 class DatabaseManager: ObservableObject {
-    private var db: OpaquePointer?
+    var db: OpaquePointer? // Exposed for advanced queries in views
     private let dbPath: String
+
+    /// Exposes the resolved unified database path for UI display/debugging.
+    var databasePath: String { dbPath }
 
     @Published var isConnected = false
     @Published var lastError: String?
 
     init() {
-        // Use the same data directory as the Python scripts
-        let projectDir = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent("Desktop")
-            .appendingPathComponent("qualified-extraction")
+        // IMPORTANT:
+        // Use a consistent, non-sandboxed path for the unified database.
+        // With sandbox disabled + FDA granted, we can access the real Application Support.
+        // This must match `DataExtractor.outputDirectory` exactly.
+        let home = FileManager.default.homeDirectoryForCurrentUser
+        let outputDir = home
+            .appendingPathComponent("Library")
+            .appendingPathComponent("Application Support")
+            .appendingPathComponent("QualifiedApp")
 
-        let dataDir = projectDir.appendingPathComponent("data")
+        // Create output directory if it doesn't exist
+        try? FileManager.default.createDirectory(at: outputDir, withIntermediateDirectories: true)
 
-        // Create data directory if it doesn't exist
-        try? FileManager.default.createDirectory(at: dataDir, withIntermediateDirectories: true)
-
-        dbPath = dataDir.appendingPathComponent("unified.db").path
+        dbPath = outputDir.appendingPathComponent("unified.db").path
 
         connect()
     }
