@@ -110,14 +110,10 @@ struct BrowserDetailSheet: View {
     private func loadVisits() {
         isLoading = true
 
-        DispatchQueue.global(qos: .userInitiated).async {
-            let fetchedVisits = fetchVisitsForDomain()
+        let fetchedVisits = fetchVisitsForDomain()
 
-            DispatchQueue.main.async {
-                self.visits = fetchedVisits
-                self.isLoading = false
-            }
-        }
+        self.visits = fetchedVisits
+        self.isLoading = false
     }
 
     private func fetchVisitsForDomain() -> [VisitRecord] {

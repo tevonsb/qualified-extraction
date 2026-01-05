@@ -142,18 +142,14 @@ struct OverviewTab: View {
     private func loadData() {
         isLoading = true
 
-        DispatchQueue.global(qos: .userInitiated).async {
-            let stats = loadSummaryStats()
-            let daily = loadDailyActivity()
-            let apps = databaseManager.getRecentAppUsage(limit: 10)
+        let stats = loadSummaryStats()
+        let daily = loadDailyActivity()
+        let apps = databaseManager.getRecentAppUsage(limit: 10)
 
-            DispatchQueue.main.async {
-                self.summaryStats = stats
-                self.activityData = daily
-                self.topApps = apps
-                self.isLoading = false
-            }
-        }
+        self.summaryStats = stats
+        self.activityData = daily
+        self.topApps = apps
+        self.isLoading = false
     }
 
     private func loadSummaryStats() -> SummaryStats {

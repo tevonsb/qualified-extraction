@@ -143,20 +143,16 @@ struct BrowserTab: View {
     private func loadData() {
         isLoading = true
 
-        DispatchQueue.global(qos: .userInitiated).async {
-            let stats = fetchBrowserStats()
-            let daily = fetchDailyVisits()
-            let domains = fetchTopDomains()
+        let stats = fetchBrowserStats()
+        let daily = fetchDailyVisits()
+        let domains = fetchTopDomains()
 
-            DispatchQueue.main.async {
-                self.totalVisits = stats.totalVisits
-                self.uniqueDomains = stats.uniqueDomains
-                self.totalDuration = stats.totalDuration
-                self.dailyVisits = daily
-                self.topDomains = domains
-                self.isLoading = false
-            }
-        }
+        self.totalVisits = stats.totalVisits
+        self.uniqueDomains = stats.uniqueDomains
+        self.totalDuration = stats.totalDuration
+        self.dailyVisits = daily
+        self.topDomains = domains
+        self.isLoading = false
     }
 
     private func fetchBrowserStats() -> (totalVisits: Int, uniqueDomains: Int, totalDuration: TimeInterval) {

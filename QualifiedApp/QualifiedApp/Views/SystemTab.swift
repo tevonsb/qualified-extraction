@@ -128,18 +128,14 @@ struct SystemTab: View {
     private func loadData() {
         isLoading = true
 
-        DispatchQueue.global(qos: .userInitiated).async {
-            let stats = fetchSystemStats()
-            let apps = fetchTopApps()
+        let stats = fetchSystemStats()
+        let apps = fetchTopApps()
 
-            DispatchQueue.main.async {
-                self.totalSessions = stats.totalSessions
-                self.uniqueApps = stats.uniqueApps
-                self.totalUsageTime = stats.totalUsageTime
-                self.topApps = apps
-                self.isLoading = false
-            }
-        }
+        self.totalSessions = stats.totalSessions
+        self.uniqueApps = stats.uniqueApps
+        self.totalUsageTime = stats.totalUsageTime
+        self.topApps = apps
+        self.isLoading = false
     }
 
     private func fetchSystemStats() -> (totalSessions: Int, uniqueApps: Int, totalUsageTime: TimeInterval) {

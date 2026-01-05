@@ -144,17 +144,13 @@ struct MessagesTab: View {
     }
 
     private func loadData() {
-        DispatchQueue.global(qos: .userInitiated).async {
-            let overTime = loadMessagesOverTime()
-            let contacts = loadTopContacts()
-            let ratio = loadSentReceivedRatio()
+        let overTime = loadMessagesOverTime()
+        let contacts = loadTopContacts()
+        let ratio = loadSentReceivedRatio()
 
-            DispatchQueue.main.async {
-                self.messagesOverTime = overTime
-                self.topContacts = contacts
-                self.sentReceivedRatio = ratio
-            }
-        }
+        self.messagesOverTime = overTime
+        self.topContacts = contacts
+        self.sentReceivedRatio = ratio
     }
 
     private func loadMessagesOverTime() -> [MessagesByDay] {
