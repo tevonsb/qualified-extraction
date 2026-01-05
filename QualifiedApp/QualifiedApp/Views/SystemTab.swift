@@ -143,7 +143,8 @@ struct SystemTab: View {
     }
 
     private func fetchSystemStats() -> (totalSessions: Int, uniqueApps: Int, totalUsageTime: TimeInterval) {
-        guard let db = databaseManager.db else {
+        guard let db = databaseManager.db, databaseManager.isConnected else {
+            print("SystemTab: Database not connected")
             return (0, 0, 0)
         }
 
@@ -161,7 +162,8 @@ struct SystemTab: View {
         """
 
         var stmt: OpaquePointer?
-        if sqlite3_prepare_v2(db, query, -1, &stmt, nil) == SQLITE_OK {
+        let result = sqlite3_prepare_v2(db, query, -1, &stmt, nil)
+        if result == SQLITE_OK {
             sqlite3_bind_int64(stmt, 1, Int64(dateRange.start.timeIntervalSince1970))
             sqlite3_bind_int64(stmt, 2, Int64(dateRange.end.timeIntervalSince1970))
 
@@ -169,6 +171,11 @@ struct SystemTab: View {
                 totalSessions = Int(sqlite3_column_int64(stmt, 0))
                 uniqueApps = Int(sqlite3_column_int64(stmt, 1))
                 totalUsageTime = TimeInterval(sqlite3_column_int64(stmt, 2))
+            }
+        } else {
+            // Log error for debugging
+            if let errorMessage = sqlite3_errmsg(db) {
+                print("SystemTab SQL Error: \(String(cString: errorMessage))")
             }
         }
         sqlite3_finalize(stmt)
