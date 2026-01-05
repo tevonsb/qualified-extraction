@@ -143,6 +143,10 @@ struct SystemTab: View {
     }
 
     private func fetchSystemStats() -> (totalSessions: Int, uniqueApps: Int, totalUsageTime: TimeInterval) {
+        guard let db = databaseManager.db else {
+            return (0, 0, 0)
+        }
+
         var totalSessions = 0
         var uniqueApps = 0
         var totalUsageTime: TimeInterval = 0
@@ -157,7 +161,7 @@ struct SystemTab: View {
         """
 
         var stmt: OpaquePointer?
-        if sqlite3_prepare_v2(databaseManager.db, query, -1, &stmt, nil) == SQLITE_OK {
+        if sqlite3_prepare_v2(db, query, -1, &stmt, nil) == SQLITE_OK {
             sqlite3_bind_int64(stmt, 1, Int64(dateRange.start.timeIntervalSince1970))
             sqlite3_bind_int64(stmt, 2, Int64(dateRange.end.timeIntervalSince1970))
 
@@ -173,6 +177,10 @@ struct SystemTab: View {
     }
 
     private func fetchTopApps() -> [AppUsageStats] {
+        guard let db = databaseManager.db else {
+            return []
+        }
+
         var apps: [AppUsageStats] = []
 
         let query = """
@@ -188,7 +196,7 @@ struct SystemTab: View {
         """
 
         var stmt: OpaquePointer?
-        if sqlite3_prepare_v2(databaseManager.db, query, -1, &stmt, nil) == SQLITE_OK {
+        if sqlite3_prepare_v2(db, query, -1, &stmt, nil) == SQLITE_OK {
             sqlite3_bind_int64(stmt, 1, Int64(dateRange.start.timeIntervalSince1970))
             sqlite3_bind_int64(stmt, 2, Int64(dateRange.end.timeIntervalSince1970))
 
@@ -212,6 +220,10 @@ struct SystemTab: View {
     }
 
     private func fetchDailyUsage() -> [DailyUsage] {
+        guard let db = databaseManager.db else {
+            return []
+        }
+
         var dailyData: [DailyUsage] = []
 
         let query = """
@@ -225,7 +237,7 @@ struct SystemTab: View {
         """
 
         var stmt: OpaquePointer?
-        if sqlite3_prepare_v2(databaseManager.db, query, -1, &stmt, nil) == SQLITE_OK {
+        if sqlite3_prepare_v2(db, query, -1, &stmt, nil) == SQLITE_OK {
             sqlite3_bind_int64(stmt, 1, Int64(dateRange.start.timeIntervalSince1970))
             sqlite3_bind_int64(stmt, 2, Int64(dateRange.end.timeIntervalSince1970))
 
