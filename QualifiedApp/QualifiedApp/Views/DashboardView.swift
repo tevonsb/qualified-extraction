@@ -54,8 +54,8 @@ struct DashboardView: View {
             // Tab navigation
             TabView(selection: $selectedTab) {
                 OverviewTab(
-                    databaseManager: databaseManager,
-                    dateRange: safeRange
+                    startDate: safeRange.start,
+                    endDate: safeRange.end
                 )
                 .tabItem {
                     Label("Overview", systemImage: "chart.line.uptrend.xyaxis")
@@ -63,8 +63,8 @@ struct DashboardView: View {
                 .tag(0)
 
                 MessagesTab(
-                    databaseManager: databaseManager,
-                    dateRange: safeRange
+                    startDate: safeRange.start,
+                    endDate: safeRange.end
                 )
                 .tabItem {
                     Label("Messages", systemImage: "message.fill")
@@ -72,8 +72,8 @@ struct DashboardView: View {
                 .tag(1)
 
                 BrowserTab(
-                    databaseManager: databaseManager,
-                    dateRange: safeRange
+                    startDate: safeRange.start,
+                    endDate: safeRange.end
                 )
                 .tabItem {
                     Label("Browser", systemImage: "globe")
@@ -81,8 +81,8 @@ struct DashboardView: View {
                 .tag(2)
 
                 SystemTab(
-                    databaseManager: databaseManager,
-                    dateRange: safeRange
+                    startDate: safeRange.start,
+                    endDate: safeRange.end
                 )
                 .tabItem {
                     Label("System", systemImage: "app.fill")

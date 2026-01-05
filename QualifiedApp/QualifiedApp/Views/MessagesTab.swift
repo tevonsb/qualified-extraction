@@ -1,320 +1,231 @@
-//
-//  MessagesTab.swift
-//  QualifiedApp
-//
-//  Messages tab with detailed message analytics
-//
-
 import SwiftUI
 import Charts
-import SQLite3
 
 struct MessagesTab: View {
-    let databaseManager: DatabaseManager
-    let dateRange: (start: Date, end: Date)
+    let startDate: Date
+    let endDate: Date
 
-    @State private var messagesOverTime: [MessagesByDay] = []
-    @State private var topContacts: [ContactStats] = []
-    @State private var sentReceivedRatio: (sent: Int, received: Int) = (0, 0)
-    @State private var selectedContact: ContactStats?
-    @State private var showingMessageDetail = false
+    @StateObject private var dbService = DatabaseService.shared
+    @State private var stats: MessageStats?
+    @State private var chartData: [(date: Date, count: Int)] = []
+    @State private var topContacts: [(contact: String, sent: Int, received: Int)] = []
+    @State private var showingDetailSheet = false
+    @State private var isLoading = true
+    @State private var error: Error?
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 20) {
-                // Sent vs Received summary
-                HStack(spacing: 16) {
-                    StatBox(title: "Sent", value: "\(sentReceivedRatio.sent)", color: .blue)
-                    StatBox(title: "Received", value: "\(sentReceivedRatio.received)", color: .green)
-                    StatBox(title: "Total", value: "\(sentReceivedRatio.sent + sentReceivedRatio.received)", color: .purple)
+            if isLoading {
+                VStack(spacing: 20) {
+                    ProgressView()
+                        .scaleEffect(1.5)
+                    Text("Loading messages...")
+                        .foregroundColor(.secondary)
                 }
-                .padding(.horizontal)
-
-                // Messages over time
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("Messages Over Time")
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .padding(.top, 100)
+            } else if let error = error {
+                VStack(spacing: 20) {
+                    Image(systemName: "exclamationmark.triangle")
+                        .font(.system(size: 48))
+                        .foregroundColor(.orange)
+                    Text("Failed to load data")
                         .font(.headline)
-                        .padding(.horizontal)
-
-                    if messagesOverTime.isEmpty {
-                        Text("No message data for selected period")
-                            .foregroundColor(.secondary)
-                            .frame(height: 250)
-                            .frame(maxWidth: .infinity)
-                    } else {
-                        Chart(messagesOverTime) { item in
-                            LineMark(
-                                x: .value("Date", item.date),
-                                y: .value("Sent", item.sent)
-                            )
-                            .foregroundStyle(.blue)
-                            .interpolationMethod(.catmullRom)
-
-                            LineMark(
-                                x: .value("Date", item.date),
-                                y: .value("Received", item.received)
-                            )
-                            .foregroundStyle(.green)
-                            .interpolationMethod(.catmullRom)
-                        }
-                        .chartLegend(position: .top)
-                        .frame(height: 250)
-                        .padding()
+                    Text(error.localizedDescription)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .padding(.top, 100)
+            } else if let stats = stats {
+                VStack(spacing: 24) {
+                    // Summary Cards
+                    LazyVGrid(columns: [
+                        GridItem(.flexible()),
+                        GridItem(.flexible()),
+                        GridItem(.flexible())
+                    ], spacing: 16) {
+                        MessageStatCard(value: stats.sent, label: "Sent", color: .blue)
+                        MessageStatCard(value: stats.received, label: "Received", color: .green)
+                        MessageStatCard(value: stats.total, label: "Total", color: .pink)
                     }
-                }
-                .background(Color(nsColor: .controlBackgroundColor))
-                .cornerRadius(8)
-                .padding(.horizontal)
+                    .padding(.horizontal)
 
-                // Top contacts
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("Top Contacts")
-                        .font(.headline)
-                        .padding(.horizontal)
-
-                    if topContacts.isEmpty {
-                        Text("No contact data")
-                            .foregroundColor(.secondary)
-                            .frame(height: 200)
-                            .frame(maxWidth: .infinity)
-                    } else {
-                        VStack(spacing: 0) {
-                            ForEach(topContacts.prefix(10)) { contact in
-                                Button(action: {
-                                    selectedContact = contact
-                                    showingMessageDetail = true
-                                }) {
+                    // Chart
+                    if !chartData.isEmpty {
+                        VStack(alignment: .leading, spacing: 12) {
+                            HStack {
+                                Text("Messages Over Time")
+                                    .font(.headline)
+                                Spacer()
+                                Button(action: { showingDetailSheet = true }) {
                                     HStack {
-                                        VStack(alignment: .leading, spacing: 4) {
-                                            Text(contact.contactName)
-                                                .font(.subheadline)
-                                                .fontWeight(.medium)
-                                            Text("\(contact.totalMessages) messages")
-                                                .font(.caption)
-                                                .foregroundColor(.secondary)
-                                        }
-
-                                        Spacer()
-
-                                        Text("\(contact.sent)↑ \(contact.received)↓")
-                                            .font(.caption)
-                                            .foregroundColor(.secondary)
-
+                                        Text("View Details")
                                         Image(systemName: "chevron.right")
-                                            .font(.caption)
-                                            .foregroundColor(.secondary)
                                     }
-                                    .padding()
-                                    .background(Color(nsColor: .windowBackgroundColor))
-                                }
-                                .buttonStyle(.plain)
-
-                                if contact.id != topContacts.prefix(10).last?.id {
-                                    Divider()
+                                    .font(.caption)
                                 }
                             }
+                            .padding(.horizontal)
+
+                            Chart {
+                                ForEach(chartData, id: \.date) { item in
+                                    LineMark(
+                                        x: .value("Date", item.date),
+                                        y: .value("Count", item.count)
+                                    )
+                                    .foregroundStyle(.blue)
+                                    .interpolationMethod(.catmullRom)
+
+                                    AreaMark(
+                                        x: .value("Date", item.date),
+                                        y: .value("Count", item.count)
+                                    )
+                                    .foregroundStyle(.blue.opacity(0.2))
+                                    .interpolationMethod(.catmullRom)
+                                }
+                            }
+                            .frame(height: 300)
+                            .chartXAxis {
+                                AxisMarks(values: .stride(by: .day, count: max(1, chartData.count / 5))) { _ in
+                                    AxisGridLine()
+                                    AxisTick()
+                                    AxisValueLabel(format: .dateTime.month().day())
+                                }
+                            }
+                            .chartYAxis {
+                                AxisMarks { value in
+                                    AxisGridLine()
+                                    AxisTick()
+                                    AxisValueLabel()
+                                }
+                            }
+                            .padding()
+                            .background(Color(.textBackgroundColor).opacity(0.3))
+                            .cornerRadius(12)
+                            .padding(.horizontal)
                         }
-                        .background(Color(nsColor: .windowBackgroundColor))
-                        .cornerRadius(8)
-                        .padding(.horizontal)
+                    }
+
+                    // Top Contacts
+                    if !topContacts.isEmpty {
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("Top Contacts")
+                                .font(.headline)
+                                .padding(.horizontal)
+
+                            ForEach(Array(topContacts.enumerated()), id: \.offset) { index, contact in
+                                ContactRow(
+                                    rank: index + 1,
+                                    contact: contact.contact,
+                                    sent: contact.sent,
+                                    received: contact.received
+                                )
+                            }
+                        }
+                        .padding(.bottom)
                     }
                 }
-                .padding(.bottom)
-            }
-            .padding(.vertical)
-        }
-        .sheet(isPresented: $showingMessageDetail) {
-            if let contact = selectedContact {
-                MessageDetailSheet(
-                    databaseManager: databaseManager,
-                    contact: contact,
-                    dateRange: dateRange
-                )
+                .padding(.vertical)
             }
         }
-        .onAppear {
-            loadData()
+        .sheet(isPresented: $showingDetailSheet) {
+            MessagesDetailSheet(startDate: startDate, endDate: endDate)
         }
-        .onChange(of: dateRange.start) { _ in
-            loadData()
+        .task {
+            await loadData()
         }
-        .onChange(of: dateRange.end) { _ in
-            loadData()
+        .onChange(of: startDate) { _ in
+            Task { await loadData() }
+        }
+        .onChange(of: endDate) { _ in
+            Task { await loadData() }
         }
     }
 
-    private func loadData() {
-        let overTime = loadMessagesOverTime()
-        let contacts = loadTopContacts()
-        let ratio = loadSentReceivedRatio()
+    private func loadData() async {
+        isLoading = true
+        error = nil
 
-        self.messagesOverTime = overTime
-        self.topContacts = contacts
-        self.sentReceivedRatio = ratio
-    }
+        do {
+            async let messageStats = dbService.getMessageStats(startDate: startDate, endDate: endDate)
+            async let timeData = dbService.getMessagesOverTime(startDate: startDate, endDate: endDate, buckets: 30)
+            async let contacts = dbService.getTopContacts(startDate: startDate, endDate: endDate, limit: 10)
 
-    private func loadMessagesOverTime() -> [MessagesByDay] {
-        guard databaseManager.isConnected, let db = databaseManager.db else {
-            return []
+            self.stats = try await messageStats
+            self.chartData = try await timeData
+            self.topContacts = try await contacts
+        } catch {
+            self.error = error
+            print("Error loading messages: \(error)")
         }
 
-        let startTimestamp = Int(dateRange.start.timeIntervalSince1970)
-        let endTimestamp = Int(dateRange.end.timeIntervalSince1970)
-        let whereClause = "WHERE timestamp >= \(startTimestamp) AND timestamp <= \(endTimestamp)"
-
-        let query = """
-        SELECT
-            date(timestamp, 'unixepoch') as day,
-            SUM(CASE WHEN is_from_me = 1 THEN 1 ELSE 0 END) as sent,
-            SUM(CASE WHEN is_from_me = 0 THEN 1 ELSE 0 END) as received
-        FROM messages
-        \(whereClause)
-        GROUP BY day
-        ORDER BY day
-        LIMIT 90
-        """
-
-        var statement: OpaquePointer?
-        guard sqlite3_prepare_v2(db, query, -1, &statement, nil) == SQLITE_OK else {
-            return []
-        }
-
-        defer { sqlite3_finalize(statement) }
-
-        var results: [MessagesByDay] = []
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "yyyy-MM-dd"
-
-        while sqlite3_step(statement) == SQLITE_ROW {
-            let dayString = String(cString: sqlite3_column_text(statement, 0))
-            let sent = Int(sqlite3_column_int(statement, 1))
-            let received = Int(sqlite3_column_int(statement, 2))
-
-            if let date = dateFormatter.date(from: dayString) {
-                results.append(MessagesByDay(date: date, sent: sent, received: received))
-            }
-        }
-
-        return results
-    }
-
-    private func loadTopContacts() -> [ContactStats] {
-        guard databaseManager.isConnected, let db = databaseManager.db else {
-            return []
-        }
-
-        let startTimestamp = Int(dateRange.start.timeIntervalSince1970)
-        let endTimestamp = Int(dateRange.end.timeIntervalSince1970)
-        let whereClause = "WHERE timestamp >= \(startTimestamp) AND timestamp <= \(endTimestamp)"
-
-        let query = """
-        SELECT
-            COALESCE(handle_id, 'Unknown') as contact,
-            COUNT(*) as total,
-            SUM(CASE WHEN is_from_me = 1 THEN 1 ELSE 0 END) as sent,
-            SUM(CASE WHEN is_from_me = 0 THEN 1 ELSE 0 END) as received
-        FROM messages
-        \(whereClause)
-        GROUP BY contact
-        ORDER BY total DESC
-        LIMIT 20
-        """
-
-        var statement: OpaquePointer?
-        guard sqlite3_prepare_v2(db, query, -1, &statement, nil) == SQLITE_OK else {
-            return []
-        }
-
-        defer { sqlite3_finalize(statement) }
-
-        var results: [ContactStats] = []
-
-        while sqlite3_step(statement) == SQLITE_ROW {
-            let contact = String(cString: sqlite3_column_text(statement, 0))
-            let total = Int(sqlite3_column_int(statement, 1))
-            let sent = Int(sqlite3_column_int(statement, 2))
-            let received = Int(sqlite3_column_int(statement, 3))
-
-            results.append(ContactStats(
-                contactName: contact,
-                totalMessages: total,
-                sent: sent,
-                received: received
-            ))
-        }
-
-        return results
-    }
-
-    private func loadSentReceivedRatio() -> (sent: Int, received: Int) {
-        guard databaseManager.isConnected, let db = databaseManager.db else {
-            return (0, 0)
-        }
-
-        let startTimestamp = Int(dateRange.start.timeIntervalSince1970)
-        let endTimestamp = Int(dateRange.end.timeIntervalSince1970)
-        let whereClause = "WHERE timestamp >= \(startTimestamp) AND timestamp <= \(endTimestamp)"
-
-        let query = """
-        SELECT
-            SUM(CASE WHEN is_from_me = 1 THEN 1 ELSE 0 END) as sent,
-            SUM(CASE WHEN is_from_me = 0 THEN 1 ELSE 0 END) as received
-        FROM messages
-        \(whereClause)
-        """
-
-        var statement: OpaquePointer?
-        guard sqlite3_prepare_v2(db, query, -1, &statement, nil) == SQLITE_OK else {
-            return (0, 0)
-        }
-
-        defer { sqlite3_finalize(statement) }
-
-        if sqlite3_step(statement) == SQLITE_ROW {
-            let sent = Int(sqlite3_column_int(statement, 0))
-            let received = Int(sqlite3_column_int(statement, 1))
-            return (sent, received)
-        }
-
-        return (0, 0)
+        isLoading = false
     }
 }
 
-// MARK: - Supporting Types
-
-struct MessagesByDay: Identifiable {
-    let id = UUID()
-    let date: Date
-    let sent: Int
-    let received: Int
-}
-
-struct ContactStats: Identifiable {
-    let id = UUID()
-    let contactName: String
-    let totalMessages: Int
-    let sent: Int
-    let received: Int
-}
-
-struct StatBox: View {
-    let title: String
-    let value: String
+struct MessageStatCard: View {
+    let value: Int
+    let label: String
     let color: Color
 
     var body: some View {
-        VStack(spacing: 4) {
-            Text(value)
-                .font(.title2)
-                .fontWeight(.bold)
+        VStack(spacing: 8) {
+            Text("\(value)")
+                .font(.system(size: 42, weight: .bold, design: .rounded))
                 .foregroundColor(color)
-            Text(title)
+
+            Text(label)
                 .font(.caption)
                 .foregroundColor(.secondary)
         }
         .frame(maxWidth: .infinity)
-        .padding()
-        .background(Color(nsColor: .controlBackgroundColor))
+        .padding(.vertical, 20)
+        .background(Color(.textBackgroundColor).opacity(0.3))
+        .cornerRadius(12)
+    }
+}
+
+struct ContactRow: View {
+    let rank: Int
+    let contact: String
+    let sent: Int
+    let received: Int
+
+    var body: some View {
+        HStack {
+            Text("\(rank)")
+                .font(.system(.body, design: .monospaced))
+                .foregroundColor(.secondary)
+                .frame(width: 30, alignment: .trailing)
+
+            Text(contact)
+                .lineLimit(1)
+
+            Spacer()
+
+            HStack(spacing: 12) {
+                HStack(spacing: 4) {
+                    Image(systemName: "arrow.up")
+                        .font(.caption2)
+                    Text("\(sent)")
+                        .font(.caption)
+                }
+                .foregroundColor(.blue)
+
+                HStack(spacing: 4) {
+                    Image(systemName: "arrow.down")
+                        .font(.caption2)
+                    Text("\(received)")
+                        .font(.caption)
+                }
+                .foregroundColor(.green)
+            }
+        }
+        .padding(.horizontal)
+        .padding(.vertical, 10)
+        .background(Color(.textBackgroundColor).opacity(0.5))
         .cornerRadius(8)
+        .padding(.horizontal)
     }
 }
