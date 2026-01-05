@@ -23,6 +23,8 @@
 		A10000000000000000000060 /* BrowserTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000061 /* BrowserTab.swift */; };
 		A10000000000000000000062 /* BrowserDetailSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000063 /* BrowserDetailSheet.swift */; };
 		A10000000000000000000064 /* SystemTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000065 /* SystemTab.swift */; };
+		BDCDD0EF51D22E947C3431B0 /* DatabaseService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B67567376070B99D4384281 /* DatabaseService.swift */; };
+		F5C360F5CEF806BB37E3E855 /* MessagesDetailSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7571CCCEB5A94E45B5FBCC4 /* MessagesDetailSheet.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -46,6 +48,8 @@
 		A10000000000000000000061 /* BrowserTab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserTab.swift; sourceTree = "<group>"; };
 		A10000000000000000000063 /* BrowserDetailSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserDetailSheet.swift; sourceTree = "<group>"; };
 		A10000000000000000000065 /* SystemTab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemTab.swift; sourceTree = "<group>"; };
+		7B67567376070B99D4384281 /* DatabaseService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DatabaseService.swift; sourceTree = "<group>"; };
+		F7571CCCEB5A94E45B5FBCC4 /* MessagesDetailSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessagesDetailSheet.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -83,7 +87,9 @@
 				A10000000000000000000006 /* Assets.xcassets */,
 				A10000000000000000000014 /* QualifiedApp.entitlements */,
 				A10000000000000000000047 /* Info.plist */,
-			);
+							7B67567376070B99D4384281 /* DatabaseService.swift */,
+				F7571CCCEB5A94E45B5FBCC4 /* MessagesDetailSheet.swift */,
+);
 			path = QualifiedApp;
 			sourceTree = "<group>";
 		};
@@ -247,7 +253,9 @@
 				A10000000000000000000060 /* BrowserTab.swift in Sources */,
 				A10000000000000000000062 /* BrowserDetailSheet.swift in Sources */,
 				A10000000000000000000064 /* SystemTab.swift in Sources */,
-			);
+							BDCDD0EF51D22E947C3431B0 /* DatabaseService.swift in Sources */,
+				F5C360F5CEF806BB37E3E855 /* MessagesDetailSheet.swift in Sources */,
+);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */

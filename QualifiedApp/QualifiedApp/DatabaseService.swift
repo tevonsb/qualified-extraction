@@ -2,9 +2,8 @@ import Foundation
 import SQLite3
 
 /// Thread-safe database service that performs all SQLite operations on a background queue
-@MainActor
 class DatabaseService: ObservableObject {
-    static let shared = DatabaseService()
+    nonisolated(unsafe) static let shared = DatabaseService()
 
     private let dbQueue = DispatchQueue(label: "com.quantified.database", qos: .userInitiated)
     private var db: OpaquePointer?
