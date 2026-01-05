@@ -11,7 +11,7 @@ import SQLite3
 
 struct OverviewTab: View {
     let databaseManager: DatabaseManager
-    let dateRange: (start: Date?, end: Date?)
+    let dateRange: (start: Date, end: Date)
 
     @State private var activityData: [DailyActivity] = []
     @State private var topApps: [(bundleId: String, duration: Double)] = []
@@ -159,17 +159,10 @@ struct OverviewTab: View {
     private func loadSummaryStats() -> SummaryStats {
         var stats = SummaryStats()
 
-        if let start = dateRange.start, let end = dateRange.end {
-            stats.totalMessages = getCount(from: "messages", between: start, and: end)
-            stats.totalWebVisits = getCount(from: "web_visits", between: start, and: end)
-            stats.totalAppSessions = getCount(from: "app_usage", between: start, and: end)
-            stats.activeDays = getActiveDays(between: start, and: end)
-        } else {
-            stats.totalMessages = databaseManager.getTotalRecords(table: "messages")
-            stats.totalWebVisits = databaseManager.getTotalRecords(table: "web_visits")
-            stats.totalAppSessions = databaseManager.getTotalRecords(table: "app_usage")
-            stats.activeDays = getActiveDays(between: nil, and: nil)
-        }
+        stats.totalMessages = getCount(from: "messages", between: dateRange.start, and: dateRange.end)
+        stats.totalWebVisits = getCount(from: "web_visits", between: dateRange.start, and: dateRange.end)
+        stats.totalAppSessions = getCount(from: "app_usage", between: dateRange.start, and: dateRange.end)
+        stats.activeDays = getActiveDays(between: dateRange.start, and: dateRange.end)
 
         return stats
     }
@@ -179,12 +172,9 @@ struct OverviewTab: View {
             return []
         }
 
-        var whereClause = ""
-        if let start = dateRange.start, let end = dateRange.end {
-            let startTimestamp = Int(start.timeIntervalSince1970)
-            let endTimestamp = Int(end.timeIntervalSince1970)
-            whereClause = "WHERE timestamp >= \(startTimestamp) AND timestamp <= \(endTimestamp)"
-        }
+        let startTimestamp = Int(dateRange.start.timeIntervalSince1970)
+        let endTimestamp = Int(dateRange.end.timeIntervalSince1970)
+        let whereClause = "WHERE timestamp >= \(startTimestamp) AND timestamp <= \(endTimestamp)"
 
         let query = """
         WITH dates AS (
