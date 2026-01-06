@@ -106,7 +106,11 @@ struct DateRangePicker: View {
 
     private func updateEffectiveRange() {
         if selectedPreset == .custom {
-            effectiveRange = (customStartDate, customEndDate)
+            // Ensure custom end date goes to end of day to include all data
+            let calendar = Calendar.current
+            let startOfDay = calendar.startOfDay(for: customStartDate)
+            let endOfDay = calendar.date(bySettingHour: 23, minute: 59, second: 59, of: customEndDate) ?? customEndDate
+            effectiveRange = (startOfDay, endOfDay)
         } else if let range = selectedPreset.dateRange {
             effectiveRange = (range.start, range.end)
         } else {

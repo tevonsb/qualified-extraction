@@ -490,6 +490,7 @@ struct MiniStatCard: View {
 struct ExtractionLogView: View {
     @ObservedObject var extractor: DataExtractor
     @Environment(\.dismiss) var dismiss
+    @State private var copiedToClipboard = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -499,6 +500,17 @@ struct ExtractionLogView: View {
                     .font(.headline)
 
                 Spacer()
+
+                if copiedToClipboard {
+                    Text("✓ Copied")
+                        .foregroundColor(.green)
+                        .font(.caption)
+                }
+
+                Button("Copy Log") {
+                    copyLogToClipboard()
+                }
+                .disabled(extractor.extractionLog.isEmpty)
 
                 Button("Clear") {
                     extractor.extractionLog.removeAll()
@@ -517,12 +529,9 @@ struct ExtractionLogView: View {
             // Log content
             ScrollView {
                 ScrollViewReader { proxy in
-                    VStack(alignment: .leading, spacing: 4) {
+                    VStack(alignment: .leading, spacing: 8) {
                         ForEach(Array(extractor.extractionLog.enumerated()), id: \.offset) { index, entry in
-                            Text(entry.message)
-                                .font(.system(.body, design: .monospaced))
-                                .foregroundColor(entry.isError ? .red : .primary)
-                                .textSelection(.enabled)
+                            LogEntryView(entry: entry)
                                 .id(index)
                         }
                     }
@@ -539,7 +548,59 @@ struct ExtractionLogView: View {
             }
             .background(Color(nsColor: .textBackgroundColor))
         }
-        .frame(width: 600, height: 400)
+        .frame(width: 700, height: 500)
+    }
+
+    private func copyLogToClipboard() {
+        let logText = extractor.extractionLog.map { entry in
+            let timestamp = DateFormatter.localizedString(from: entry.timestamp, dateStyle: .none, timeStyle: .medium)
+            let prefix = entry.isError ? "❌" : "ℹ️"
+            return "[\(timestamp)] \(prefix) \(entry.message)"
+        }.joined(separator: "\n")
+
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(logText, forType: .string)
+
+        copiedToClipboard = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+            copiedToClipboard = false
+        }
+    }
+}
+
+struct LogEntryView: View {
+    let entry: ExtractionLogEntry
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 8) {
+            // Timestamp
+            Text(formatTime(entry.timestamp))
+                .font(.system(.caption, design: .monospaced))
+                .foregroundColor(.secondary)
+                .frame(width: 60, alignment: .leading)
+
+            // Icon
+            Text(entry.isError ? "❌" : "ℹ️")
+                .font(.caption)
+
+            // Message with multi-line support
+            Text(entry.message)
+                .font(.system(.body, design: .monospaced))
+                .foregroundColor(entry.isError ? .red : .primary)
+                .textSelection(.enabled)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(.vertical, 4)
+        .padding(.horizontal, 8)
+        .background(entry.isError ? Color.red.opacity(0.05) : Color.clear)
+        .cornerRadius(4)
+    }
+
+    private func formatTime(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.timeStyle = .medium
+        formatter.dateStyle = .none
+        return formatter.string(from: date)
     }
 }
 

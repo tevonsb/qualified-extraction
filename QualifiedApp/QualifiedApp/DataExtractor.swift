@@ -42,9 +42,11 @@ final class DataExtractor: ObservableObject {
     ///
     /// This should be a writable location for the app sandbox. The default uses Application Support.
     var outputDirectory: URL {
-        let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
-        let appSupport = base ?? FileManager.default.temporaryDirectory
-        return appSupport.appendingPathComponent("QualifiedApp", isDirectory: true)
+        let home = FileManager.default.homeDirectoryForCurrentUser
+        return home
+            .appendingPathComponent("Desktop")
+            .appendingPathComponent("qualified-extraction")
+            .appendingPathComponent("data")
     }
 
     // MARK: - Public API

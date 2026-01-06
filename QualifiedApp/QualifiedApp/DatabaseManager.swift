@@ -2,15 +2,16 @@
 //  DatabaseManager.swift
 //  QualifiedApp
 //
-//  Manages SQLite database operations for the Qualified app
+//  Manages SQLite database operations with thread-safe access
 //
 
 import Foundation
 import SQLite3
 
 class DatabaseManager: ObservableObject {
-    var db: OpaquePointer? // Exposed for advanced queries in views
+    private var db: OpaquePointer?
     private let dbPath: String
+    private let dbQueue = DispatchQueue(label: "com.qualifiedapp.database", qos: .userInitiated)
 
     /// Exposes the resolved unified database path for UI display/debugging.
     var databasePath: String { dbPath }
@@ -25,9 +26,9 @@ class DatabaseManager: ObservableObject {
         // This must match `DataExtractor.outputDirectory` exactly.
         let home = FileManager.default.homeDirectoryForCurrentUser
         let outputDir = home
-            .appendingPathComponent("Library")
-            .appendingPathComponent("Application Support")
-            .appendingPathComponent("QualifiedApp")
+            .appendingPathComponent("Desktop")
+            .appendingPathComponent("qualified-extraction")
+            .appendingPathComponent("data")
 
         // Create output directory if it doesn't exist
         try? FileManager.default.createDirectory(at: outputDir, withIntermediateDirectories: true)
@@ -42,24 +43,38 @@ class DatabaseManager: ObservableObject {
     }
 
     func connect() {
-        if sqlite3_open(dbPath, &db) == SQLITE_OK {
-            isConnected = true
-            initializeDatabase()
-        } else {
-            isConnected = false
-            lastError = "Failed to open database"
+        dbQueue.sync {
+            if sqlite3_open(dbPath, &db) == SQLITE_OK {
+                // Enable multi-threaded mode
+                sqlite3_exec(db, "PRAGMA journal_mode=WAL;", nil, nil, nil)
+                sqlite3_exec(db, "PRAGMA synchronous=NORMAL;", nil, nil, nil)
+
+                DispatchQueue.main.async {
+                    self.isConnected = true
+                }
+                initializeDatabaseInternal()
+            } else {
+                DispatchQueue.main.async {
+                    self.isConnected = false
+                    self.lastError = "Failed to open database"
+                }
+            }
         }
     }
 
     func disconnect() {
-        if db != nil {
-            sqlite3_close(db)
-            db = nil
-            isConnected = false
+        dbQueue.sync {
+            if db != nil {
+                sqlite3_close(db)
+                db = nil
+                DispatchQueue.main.async {
+                    self.isConnected = false
+                }
+            }
         }
     }
 
-    private func initializeDatabase() {
+    private func initializeDatabaseInternal() {
         let schema = """
         CREATE TABLE IF NOT EXISTS extraction_runs (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -137,6 +152,14 @@ class DatabaseManager: ObservableObject {
             last_message_time INTEGER
         );
 
+        CREATE TABLE IF NOT EXISTS contacts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            record_hash TEXT UNIQUE NOT NULL,
+            handle_id TEXT NOT NULL,
+            display_name TEXT,
+            service TEXT
+        );
+
         CREATE TABLE IF NOT EXISTS podcast_episodes (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             record_hash TEXT UNIQUE NOT NULL,
@@ -182,16 +205,18 @@ class DatabaseManager: ObservableObject {
         CREATE INDEX IF NOT EXISTS idx_app_usage_bundle ON app_usage(bundle_id);
         CREATE INDEX IF NOT EXISTS idx_web_visits_time ON web_visits(visit_time);
         CREATE INDEX IF NOT EXISTS idx_messages_time ON messages(timestamp);
+        CREATE INDEX IF NOT EXISTS idx_messages_handle ON messages(handle_id);
+        CREATE INDEX IF NOT EXISTS idx_contacts_handle ON contacts(handle_id);
         CREATE INDEX IF NOT EXISTS idx_notifications_time ON notifications(timestamp);
         CREATE INDEX IF NOT EXISTS idx_bluetooth_time ON bluetooth_connections(start_time);
         CREATE INDEX IF NOT EXISTS idx_podcast_episodes_played ON podcast_episodes(last_played_at);
         """
 
-        execute(sql: schema)
+        executeInternal(sql: schema)
     }
 
-    @discardableResult
-    func execute(sql: String) -> Bool {
+    // Internal method that must be called from within dbQueue
+    private func executeInternal(sql: String) -> Bool {
         guard db != nil else { return false }
 
         var error: UnsafeMutablePointer<Int8>?
@@ -199,7 +224,10 @@ class DatabaseManager: ObservableObject {
 
         if result != SQLITE_OK {
             if let error = error {
-                lastError = String(cString: error)
+                let errorMsg = String(cString: error)
+                DispatchQueue.main.async {
+                    self.lastError = errorMsg
+                }
                 sqlite3_free(error)
             }
             return false
@@ -208,81 +236,114 @@ class DatabaseManager: ObservableObject {
         return true
     }
 
+    // Thread-safe wrapper for execute
+    @discardableResult
+    func execute(sql: String) -> Bool {
+        return dbQueue.sync {
+            return executeInternal(sql: sql)
+        }
+    }
+
+    // Thread-safe query execution
+    func query<T>(_ block: @escaping (OpaquePointer?) -> T) -> T {
+        return dbQueue.sync {
+            return block(db)
+        }
+    }
+
     func getTotalRecords(table: String) -> Int {
-        guard db != nil else { return 0 }
+        return query { db in
+            guard db != nil else { return 0 }
 
-        let query = "SELECT COUNT(*) FROM \(table)"
-        var statement: OpaquePointer?
+            let query = "SELECT COUNT(*) FROM \(table)"
+            var statement: OpaquePointer?
 
-        guard sqlite3_prepare_v2(db, query, -1, &statement, nil) == SQLITE_OK else {
+            guard sqlite3_prepare_v2(db, query, -1, &statement, nil) == SQLITE_OK else {
+                return 0
+            }
+
+            defer { sqlite3_finalize(statement) }
+
+            if sqlite3_step(statement) == SQLITE_ROW {
+                return Int(sqlite3_column_int(statement, 0))
+            }
+
             return 0
         }
+    }
 
-        defer { sqlite3_finalize(statement) }
-
-        if sqlite3_step(statement) == SQLITE_ROW {
-            return Int(sqlite3_column_int(statement, 0))
+    func getDatabaseSize() -> String {
+        guard let attributes = try? FileManager.default.attributesOfItem(atPath: dbPath),
+              let fileSize = attributes[.size] as? Int64 else {
+            return "Unknown"
         }
 
-        return 0
+        let sizeInMB = Double(fileSize) / 1024.0 / 1024.0
+        return String(format: "%.1f MB", sizeInMB)
     }
 
     func getRecentAppUsage(limit: Int = 10) -> [(bundleId: String, duration: Double)] {
-        guard db != nil else { return [] }
+        return query { db in
+            guard db != nil else { return [] }
 
-        let query = """
-        SELECT bundle_id, SUM(duration_seconds) as total_duration
-        FROM app_usage
-        WHERE start_time >= strftime('%s', 'now', '-7 days')
-        GROUP BY bundle_id
-        ORDER BY total_duration DESC
-        LIMIT ?
-        """
+            let query = """
+            SELECT bundle_id, SUM(duration_seconds) as total_duration
+            FROM app_usage
+            WHERE start_time >= strftime('%s', 'now', '-7 days')
+            GROUP BY bundle_id
+            ORDER BY total_duration DESC
+            LIMIT ?
+            """
 
-        var statement: OpaquePointer?
-        guard sqlite3_prepare_v2(db, query, -1, &statement, nil) == SQLITE_OK else {
-            return []
+            var statement: OpaquePointer?
+            guard sqlite3_prepare_v2(db, query, -1, &statement, nil) == SQLITE_OK else {
+                return []
+            }
+
+            defer { sqlite3_finalize(statement) }
+
+            sqlite3_bind_int(statement, 1, Int32(limit))
+
+            var results: [(String, Double)] = []
+            while sqlite3_step(statement) == SQLITE_ROW {
+                let bundleId = String(cString: sqlite3_column_text(statement, 0))
+                let duration = sqlite3_column_double(statement, 1)
+                results.append((bundleId, duration))
+            }
+
+            return results
         }
-
-        defer { sqlite3_finalize(statement) }
-
-        sqlite3_bind_int(statement, 1, Int32(limit))
-
-        var results: [(String, Double)] = []
-        while sqlite3_step(statement) == SQLITE_ROW {
-            let bundleId = String(cString: sqlite3_column_text(statement, 0))
-            let duration = sqlite3_column_double(statement, 1)
-            results.append((bundleId, duration))
-        }
-
-        return results
     }
 
     func getTodayStats() -> (apps: Int, messages: Int, webVisits: Int) {
-        guard db != nil else { return (0, 0, 0) }
+        return query { db in
+            guard db != nil else { return (0, 0, 0) }
 
-        let todayStart = Calendar.current.startOfDay(for: Date()).timeIntervalSince1970
+            let todayStart = Calendar.current.startOfDay(for: Date()).timeIntervalSince1970
 
-        let apps = getCount(from: "app_usage", where: "start_time >= \(Int(todayStart))")
-        let messages = getCount(from: "messages", where: "timestamp >= \(Int(todayStart))")
-        let webVisits = getCount(from: "web_visits", where: "visit_time >= \(Int(todayStart))")
+            let apps = self.getCountInternal(db: db, from: "app_usage", where: "start_time >= \(Int(todayStart))")
+            let messages = self.getCountInternal(db: db, from: "messages", where: "timestamp >= \(Int(todayStart))")
+            let webVisits = self.getCountInternal(db: db, from: "web_visits", where: "visit_time >= \(Int(todayStart))")
 
-        return (apps, messages, webVisits)
+            return (apps, messages, webVisits)
+        }
     }
 
     func getWeekStats() -> (apps: Int, messages: Int, webVisits: Int) {
-        guard db != nil else { return (0, 0, 0) }
+        return query { db in
+            guard db != nil else { return (0, 0, 0) }
 
-        let weekAgo = Date().addingTimeInterval(-7 * 24 * 60 * 60).timeIntervalSince1970
+            let weekAgo = Date().addingTimeInterval(-7 * 24 * 60 * 60).timeIntervalSince1970
 
-        let apps = getCount(from: "app_usage", where: "start_time >= \(Int(weekAgo))")
-        let messages = getCount(from: "messages", where: "timestamp >= \(Int(weekAgo))")
-        let webVisits = getCount(from: "web_visits", where: "visit_time >= \(Int(weekAgo))")
+            let apps = self.getCountInternal(db: db, from: "app_usage", where: "start_time >= \(Int(weekAgo))")
+            let messages = self.getCountInternal(db: db, from: "messages", where: "timestamp >= \(Int(weekAgo))")
+            let webVisits = self.getCountInternal(db: db, from: "web_visits", where: "visit_time >= \(Int(weekAgo))")
 
-        return (apps, messages, webVisits)
+            return (apps, messages, webVisits)
+        }
     }
 
-    private func getCount(from table: String, where condition: String) -> Int {
+    private func getCountInternal(db: OpaquePointer?, from table: String, where condition: String) -> Int {
         guard db != nil else { return 0 }
 
         let query = "SELECT COUNT(*) FROM \(table) WHERE \(condition)"
@@ -299,15 +360,5 @@ class DatabaseManager: ObservableObject {
         }
 
         return 0
-    }
-
-    func getDatabaseSize() -> String {
-        guard let attributes = try? FileManager.default.attributesOfItem(atPath: dbPath),
-              let fileSize = attributes[.size] as? Int64 else {
-            return "Unknown"
-        }
-
-        let sizeInMB = Double(fileSize) / 1024.0 / 1024.0
-        return String(format: "%.1f MB", sizeInMB)
     }
 }

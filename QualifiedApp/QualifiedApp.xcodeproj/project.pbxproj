@@ -12,6 +12,7 @@
 		A10000000000000000000005 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000006 /* Assets.xcassets */; };
 		A10000000000000000000007 /* DataExtractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000008 /* DataExtractor.swift */; };
 		A10000000000000000000009 /* DatabaseManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000010 /* DatabaseManager.swift */; };
+		A10000000000000000000066 /* DatabaseService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000067 /* DatabaseService.swift */; };
 		A10000000000000000000011 /* StatsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000012 /* StatsViewModel.swift */; };
 		A10000000000000000000040 /* quantified_core.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000041 /* quantified_core.swift */; };
 		A10000000000000000000044 /* libquantified_core.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = A10000000000000000000045 /* libquantified_core.dylib */; };
@@ -23,7 +24,6 @@
 		A10000000000000000000060 /* BrowserTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000061 /* BrowserTab.swift */; };
 		A10000000000000000000062 /* BrowserDetailSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000063 /* BrowserDetailSheet.swift */; };
 		A10000000000000000000064 /* SystemTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000065 /* SystemTab.swift */; };
-		FAC0A2E1F85457330B650E38 /* DatabaseService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 025F7F429620197088ECD928 /* DatabaseService.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -35,6 +35,7 @@
 		A10000000000000000000047 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		A10000000000000000000008 /* DataExtractor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataExtractor.swift; sourceTree = "<group>"; };
 		A10000000000000000000010 /* DatabaseManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DatabaseManager.swift; sourceTree = "<group>"; };
+		A10000000000000000000067 /* DatabaseService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DatabaseService.swift; sourceTree = "<group>"; };
 		A10000000000000000000012 /* StatsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsViewModel.swift; sourceTree = "<group>"; };
 		A10000000000000000000041 /* quantified_core.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Generated/quantified_core.swift; sourceTree = "<group>"; };
 		A10000000000000000000042 /* quantified_coreFFI.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Generated/quantified_coreFFI.h; sourceTree = "<group>"; };
@@ -47,7 +48,6 @@
 		A10000000000000000000061 /* BrowserTab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserTab.swift; sourceTree = "<group>"; };
 		A10000000000000000000063 /* BrowserDetailSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserDetailSheet.swift; sourceTree = "<group>"; };
 		A10000000000000000000065 /* SystemTab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemTab.swift; sourceTree = "<group>"; };
-		025F7F429620197088ECD928 /* DatabaseService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DatabaseService.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -79,13 +79,13 @@
 				A10000000000000000000012 /* StatsViewModel.swift */,
 				A10000000000000000000008 /* DataExtractor.swift */,
 				A10000000000000000000010 /* DatabaseManager.swift */,
+				A10000000000000000000067 /* DatabaseService.swift */,
 				A10000000000000000000048 /* Views */,
 				A10000000000000000000041 /* quantified_core.swift */,
 				A10000000000000000000042 /* quantified_coreFFI.h */,
 				A10000000000000000000006 /* Assets.xcassets */,
 				A10000000000000000000014 /* QualifiedApp.entitlements */,
 				A10000000000000000000047 /* Info.plist */,
-											025F7F429620197088ECD928 /* DatabaseService.swift */,
 );
 			path = QualifiedApp;
 			sourceTree = "<group>";
@@ -128,8 +128,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = A10000000000000000000020 /* Build configuration list for PBXNativeTarget "QualifiedApp" */;
 			buildPhases = (
-				A10000000000000000000032 /* Generate UniFFI Swift Bindings */,
-				A10000000000000000000031 /* Build Rust Library */,
+				A10000000000000000000031 /* Build Rust and Generate Bindings */,
 				A10000000000000000000021 /* Sources */,
 				A10000000000000000000015 /* Frameworks */,
 				A10000000000000000000022 /* Resources */,
@@ -188,7 +187,7 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
-		A10000000000000000000032 /* Generate UniFFI Swift Bindings */ = {
+		A10000000000000000000031 /* Build Rust and Generate Bindings */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -197,7 +196,7 @@
 			);
 			inputPaths = (
 			);
-			name = "Generate UniFFI Swift Bindings";
+			name = "Build Rust and Generate Bindings";
 			outputFileListPaths = (
 			);
 			outputPaths = (
@@ -207,27 +206,8 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/bash;
-			shellScript = "set -e\n\n# Add cargo to PATH\nexport PATH=\"$HOME/.cargo/bin:$PATH\"\n\necho \"🧬 Generating UniFFI Swift bindings (Project Generated folder)...\"\n\n# Navigate to repo root\ncd \"${PROJECT_DIR}/..\"\nRUST_DIR=\"quantified-core\"\n\n# Determine build type\nif [ \"${CONFIGURATION}\" == \"Debug\" ]; then\n    BUILD_TYPE=\"\"\n    TARGET_DIR=\"debug\"\nelse\n    BUILD_TYPE=\"--release\"\n    TARGET_DIR=\"release\"\nfi\n\n# Build the Rust cdylib so `--library` mode can introspect it\ncd \"$RUST_DIR\"\ncargo build --lib $BUILD_TYPE\n\nLIB_PATH=\"target/${TARGET_DIR}/libquantified_core.dylib\"\n\n# Generate into the Xcode project sources directory so the file is compiled by the target.\nOUT_DIR=\"${PROJECT_DIR}/QualifiedApp/Generated\"\nmkdir -p \"$OUT_DIR\"\n\n# Generate Swift bindings + FFI header/modulemap from the compiled library\ncargo run --features=uniffi/cli --bin uniffi-bindgen -- generate \\\n  --library \"$LIB_PATH\" \\\n  --language swift \\\n  --out-dir \"$OUT_DIR\"\n\n# IMPORTANT: Do NOT strip the optional quantified_coreFFI import block from the generated Swift.\n# UniFFI's Swift bindings expect to import the Clang module described by quantified_coreFFI.modulemap.\n\necho \"✅ UniFFI bindings generated at: $OUT_DIR\"\n";
-			showEnvVarsInLog = 1;
-		};
-		A10000000000000000000031 /* Build Rust Library */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-			);
-			inputPaths = (
-			);
-			name = "Build Rust Library";
-			outputFileListPaths = (
-			);
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/bash;
-			shellScript = "set -e\n\n# Add cargo to PATH\nexport PATH=\"$HOME/.cargo/bin:$PATH\"\n\necho \"🦀 Building Rust library...\"\n\n# Navigate to Rust project\ncd \"${PROJECT_DIR}/..\"\nRUST_DIR=\"quantified-core\"\n\n# Determine build type\nif [ \"${CONFIGURATION}\" == \"Debug\" ]; then\n    BUILD_TYPE=\"\"\n    TARGET_DIR=\"debug\"\nelse\n    BUILD_TYPE=\"--release\"\n    TARGET_DIR=\"release\"\nfi\n\n# Build Rust library\ncd \"$RUST_DIR\"\ncargo build --lib $BUILD_TYPE\n\n# Copy dylib to app bundle\nDYLIB=\"target/${TARGET_DIR}/libquantified_core.dylib\"\nDEST=\"${BUILT_PRODUCTS_DIR}/${PRODUCT_NAME}.app/Contents/Frameworks\"\n\nmkdir -p \"$DEST\"\ncp \"$DYLIB\" \"$DEST/\"\n\necho \"✅ Rust library built and copied to app bundle\"\n";
-			showEnvVarsInLog = 1;
+			shellScript = "set -e\n\nexport PATH=\"$HOME/.cargo/bin:$PATH\"\n\necho \"🦀 Building Rust library and generating Swift bindings...\"\n\ncd \"${PROJECT_DIR}/../quantified-core\"\n\n# Determine build configuration\nif [ \"${CONFIGURATION}\" == \"Debug\" ]; then\n    TARGET_DIR=\"debug\"\n    cargo build --lib\nelse\n    TARGET_DIR=\"release\"\n    cargo build --lib --release\nfi\n\nLIB_PATH=\"target/${TARGET_DIR}/libquantified_core.dylib\"\nOUT_DIR=\"${PROJECT_DIR}/QualifiedApp/Generated\"\n\nmkdir -p \"$OUT_DIR\"\n\n# Ensure uniffi-bindgen is installed (only installs if missing)\nif ! command -v uniffi-bindgen &> /dev/null; then\n    echo \"⚙️  Installing uniffi-bindgen 0.28.3 (one-time setup)...\"\n    cargo install --git https://github.com/mozilla/uniffi-rs --tag v0.28.3 uniffi-bindgen-cli\nfi\n\n# Generate Swift bindings\nuniffi-bindgen generate \\\n    --library \"$LIB_PATH\" \\\n    --language swift \\\n    --out-dir \"$OUT_DIR\"\n\n# Copy dylib to app bundle\nDEST=\"${BUILT_PRODUCTS_DIR}/${PRODUCT_NAME}.app/Contents/Frameworks\"\nmkdir -p \"$DEST\"\ncp \"$LIB_PATH\" \"$DEST/\"\n\necho \"✅ Rust library built and copied to app bundle\"\n";
+			showEnvVarsInLog = 0;
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -240,6 +220,7 @@
 				A10000000000000000000001 /* QualifiedAppApp.swift in Sources */,
 				A10000000000000000000007 /* DataExtractor.swift in Sources */,
 				A10000000000000000000009 /* DatabaseManager.swift in Sources */,
+				A10000000000000000000066 /* DatabaseService.swift in Sources */,
 				A10000000000000000000011 /* StatsViewModel.swift in Sources */,
 				A10000000000000000000040 /* quantified_core.swift in Sources */,
 				A10000000000000000000050 /* DateRangePicker.swift in Sources */,
@@ -250,7 +231,6 @@
 				A10000000000000000000060 /* BrowserTab.swift in Sources */,
 				A10000000000000000000062 /* BrowserDetailSheet.swift in Sources */,
 				A10000000000000000000064 /* SystemTab.swift in Sources */,
-											FAC0A2E1F85457330B650E38 /* DatabaseService.swift in Sources */,
 );
 			runOnlyForDeploymentPostprocessing = 0;
 		};

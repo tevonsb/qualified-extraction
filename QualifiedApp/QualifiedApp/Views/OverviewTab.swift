@@ -8,7 +8,7 @@ struct OverviewTab: View {
     @StateObject private var dbService = DatabaseService.shared
     @State private var stats: OverviewStats?
     @State private var topContacts: [(contact: String, sent: Int, received: Int)] = []
-    @State private var topApps: [(app: String, count: Int)] = []
+    @State private var topApps: [(app: String, duration: TimeInterval)] = []
     @State private var isLoading = true
     @State private var error: Error?
 
@@ -62,8 +62,8 @@ struct OverviewTab: View {
                         SummaryCard(
                             icon: "app.fill",
                             iconColor: .blue,
-                            value: "\(stats.system.totalEvents)",
-                            label: "App Sessions"
+                            value: formatDuration(stats.system.totalTime),
+                            label: "Total Usage"
                         )
 
                         SummaryCard(
@@ -141,7 +141,7 @@ struct OverviewTab: View {
 
                                         Spacer()
 
-                                        Text("\(app.count) sessions")
+                                        Text(formatDuration(app.duration))
                                             .font(.caption)
                                             .foregroundColor(.secondary)
                                     }
@@ -193,6 +193,19 @@ struct OverviewTab: View {
         // Convert com.apple.Safari -> Safari
         let components = bundleId.split(separator: ".")
         return components.last.map(String.init) ?? bundleId
+    }
+
+    private func formatDuration(_ seconds: TimeInterval) -> String {
+        let hours = Int(seconds) / 3600
+        let minutes = (Int(seconds) % 3600) / 60
+
+        if hours > 0 {
+            return "\(hours)h \(minutes)m"
+        } else if minutes > 0 {
+            return "\(minutes)m"
+        } else {
+            return "<1m"
+        }
     }
 }
 

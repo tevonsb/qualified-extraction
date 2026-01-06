@@ -22,9 +22,9 @@ class DatabaseService: ObservableObject {
 
             let home = FileManager.default.homeDirectoryForCurrentUser
             let outputDir = home
-                .appendingPathComponent("Library")
-                .appendingPathComponent("Application Support")
-                .appendingPathComponent("QualifiedApp")
+                .appendingPathComponent("Desktop")
+                .appendingPathComponent("qualified-extraction")
+                .appendingPathComponent("data")
 
             let dbPath = outputDir.appendingPathComponent("unified.db").path
 

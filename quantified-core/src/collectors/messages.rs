@@ -1,7 +1,7 @@
 //! Messages collector for Apple Messages (iMessage/SMS) from chat.db
 
 use crate::collectors::base::{BaseCollector, Collector};
-use crate::error::Result;
+use crate::error::{Error, Result};
 use crate::timestamp;
 use crate::types::{CollectorType, ExtractionConfig};
 use rusqlite::Connection;
@@ -21,13 +21,78 @@ impl<'a> MessagesCollector<'a> {
         })
     }
 
+    fn extract_contacts(&mut self, source: &Connection) -> Result<()> {
+        if self.base.config.verbose {
+            println!("  Extracting contacts...");
+        }
+
+        let query = r#"
+            SELECT DISTINCT
+                h.id,
+                h.service,
+                c.display_name
+            FROM handle h
+            LEFT JOIN chat_handle_join chj ON h.ROWID = chj.handle_id
+            LEFT JOIN chat c ON chj.chat_id = c.ROWID
+            WHERE c.display_name IS NOT NULL
+            "#;
+
+        let mut stmt = source.prepare(query).map_err(|e| {
+            Error::sql_error(
+                "extract_contacts",
+                query,
+                e,
+                "Verify that Messages database (chat.db) has handle, chat_handle_join, and chat tables",
+            )
+        })?;
+
+        let mut rows = stmt.query([])?;
+
+        while let Some(row) = rows.next()? {
+            let handle_id: Option<String> = row.get(0)?;
+            let service: Option<String> = row.get(1)?;
+            let display_name: Option<String> = row.get(2)?;
+
+            // Skip if no handle_id
+            let handle_id = match handle_id {
+                Some(h) if !h.is_empty() => h,
+                _ => continue,
+            };
+
+            let record_hash = handle_id.clone(); // handle_id is unique
+
+            match self.base.unified_db.execute(
+                r#"
+                INSERT INTO contacts
+                (record_hash, handle_id, display_name, service)
+                VALUES (?, ?, ?, ?)
+                "#,
+                rusqlite::params![
+                    record_hash,
+                    handle_id,
+                    display_name,
+                    service,
+                ],
+            ) {
+                Ok(_) => self.base.records_added += 1,
+                Err(rusqlite::Error::SqliteFailure(err, _))
+                    if err.code == rusqlite::ErrorCode::ConstraintViolation =>
+                {
+                    self.base.records_skipped += 1;
+                }
+                Err(e) => return Err(e.into()),
+            }
+        }
+
+        Ok(())
+    }
+
     fn extract_chats(&mut self, source: &Connection) -> Result<()> {
         if self.base.config.verbose {
             println!("  Extracting chats...");
         }
 
-        let mut stmt = source.prepare(
-            r#"
+        let query = r#"
             SELECT
                 c.ROWID,
                 c.guid,
@@ -38,8 +103,16 @@ impl<'a> MessagesCollector<'a> {
                  JOIN chat_message_join cmj ON m.ROWID = cmj.message_id
                  WHERE cmj.chat_id = c.ROWID) as last_message_date
             FROM chat c
-            "#,
-        )?;
+            "#;
+
+        let mut stmt = source.prepare(query).map_err(|e| {
+            Error::sql_error(
+                "extract_chats",
+                query,
+                e,
+                "Verify that Messages database has chat, message, and chat_message_join tables",
+            )
+        })?;
 
         let mut rows = stmt.query([])?;
 
@@ -91,8 +164,7 @@ impl<'a> MessagesCollector<'a> {
             println!("  Extracting messages...");
         }
 
-        let mut stmt = source.prepare(
-            r#"
+        let query = r#"
             SELECT
                 m.ROWID,
                 m.guid,
@@ -112,8 +184,16 @@ impl<'a> MessagesCollector<'a> {
             LEFT JOIN chat_message_join cmj ON m.ROWID = cmj.message_id
             LEFT JOIN chat c ON cmj.chat_id = c.ROWID
             ORDER BY m.date
-            "#,
-        )?;
+            "#;
+
+        let mut stmt = source.prepare(query).map_err(|e| {
+            Error::sql_error(
+                "extract_messages",
+                query,
+                e,
+                "Verify Messages database schema. Check that message, handle, chat, chat_message_join, and attachment tables exist",
+            )
+        })?;
 
         let mut rows = stmt.query([])?;
 
@@ -194,8 +274,30 @@ impl<'a> Collector for MessagesCollector<'a> {
     }
 
     fn extract(&mut self, source_conn: &Connection) -> Result<()> {
-        self.extract_chats(source_conn)?;
-        self.extract_messages(source_conn)?;
+        // First, verify we can read from the database (permission check)
+        let can_read = source_conn
+            .query_row("SELECT COUNT(*) FROM message LIMIT 1", [], |_| Ok(()))
+            .is_ok();
+
+        if !can_read {
+            return Err(Error::PermissionDenied {
+                path: std::path::PathBuf::from("~/Library/Messages/chat.db"),
+            });
+        }
+
+        // Extract in order with detailed error context
+        self.extract_contacts(source_conn).map_err(|e| {
+            Error::ExtractionFailed(format!("Failed to extract contacts: {}", e))
+        })?;
+
+        self.extract_chats(source_conn).map_err(|e| {
+            Error::ExtractionFailed(format!("Failed to extract chats: {}", e))
+        })?;
+
+        self.extract_messages(source_conn).map_err(|e| {
+            Error::ExtractionFailed(format!("Failed to extract messages: {}", e))
+        })?;
+
         Ok(())
     }
 

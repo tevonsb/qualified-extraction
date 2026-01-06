@@ -39,7 +39,13 @@ pub trait Collector {
         let source_path = match self.find_source_db() {
             Some(path) => path,
             None => {
-                let error_msg = format!("Source database not found for {}", self.name());
+                let paths = if let Some(custom_paths) = &self.config().custom_source_paths {
+                    custom_paths.clone()
+                } else {
+                    self.source_paths()
+                };
+                let error = Error::source_not_found(&paths);
+                let error_msg = error.to_string();
                 if self.verbose() {
                     println!("  ✗ {}", error_msg);
                 }
@@ -50,7 +56,7 @@ pub trait Collector {
         let source_db_copy = match self.copy_source_db(&source_path) {
             Ok(path) => path,
             Err(e) => {
-                let error_msg = format!("Failed to copy source database: {}", e);
+                let error_msg = format!("Failed to copy source database from {}: {}", source_path.display(), e);
                 if self.verbose() {
                     println!("  ✗ {}", error_msg);
                 }
@@ -72,6 +78,24 @@ pub trait Collector {
         match extract_result {
             Ok(_) => {
                 let (added, skipped) = self.get_counts();
+
+                // If we extracted 0 records, this likely indicates a permission issue
+                // or the database is truly empty. Treat as a failure for better user feedback.
+                if added == 0 && skipped == 0 {
+                    let error_msg = format!(
+                        "No data extracted from {} (0 added, 0 skipped)\nPossible causes:\n  • Permission denied - Grant Full Disk Access in System Settings > Privacy & Security\n  • Database is empty (no data to extract)\n  • Database schema incompatible with expected structure\n  Source: {}",
+                        self.name(),
+                        source_path.display()
+                    );
+                    self.complete_extraction_run(run_id, "failed", 0, 0)?;
+
+                    if self.verbose() {
+                        println!("  ✗ {}", error_msg);
+                    }
+
+                    return Ok(result.fail(error_msg));
+                }
+
                 self.complete_extraction_run(run_id, "completed", added, skipped)?;
 
                 if self.verbose() {
@@ -174,6 +198,27 @@ pub trait Collector {
                     let size = format_file_size(&dest)?;
                     println!("  ✓ Copied fresh {} database ({})", self.name(), size);
                 }
+
+                // Also copy WAL and SHM files if they exist (SQLite Write-Ahead Log)
+                let wal_source = source_path.with_extension("db-wal");
+                let shm_source = source_path.with_extension("db-shm");
+                let wal_dest = dest.with_extension("db-wal");
+                let shm_dest = dest.with_extension("db-shm");
+
+                if wal_source.exists() {
+                    let _ = fs::copy(&wal_source, &wal_dest);
+                    if self.verbose() {
+                        println!("  ✓ Copied WAL file");
+                    }
+                }
+
+                if shm_source.exists() {
+                    let _ = fs::copy(&shm_source, &shm_dest);
+                    if self.verbose() {
+                        println!("  ✓ Copied SHM file");
+                    }
+                }
+
                 Ok(dest)
             }
             Err(e) if e.kind() == std::io::ErrorKind::PermissionDenied => {
@@ -181,7 +226,11 @@ pub trait Collector {
                     path: source_path.clone(),
                 })
             }
-            Err(e) => Err(Error::CopyFailed(e.to_string())),
+            Err(e) => Err(Error::io_context(
+                format!("copying {} database", self.name()),
+                source_path.display().to_string(),
+                e,
+            )),
         }
     }
 

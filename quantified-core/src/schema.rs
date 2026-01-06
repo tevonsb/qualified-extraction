@@ -89,6 +89,15 @@ CREATE TABLE IF NOT EXISTS chats (
     last_message_time INTEGER
 );
 
+-- Contact information from Messages database
+CREATE TABLE IF NOT EXISTS contacts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    record_hash TEXT UNIQUE NOT NULL,
+    handle_id TEXT NOT NULL,
+    display_name TEXT,
+    service TEXT
+);
+
 -- Podcast listening history
 CREATE TABLE IF NOT EXISTS podcast_episodes (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -139,6 +148,8 @@ CREATE INDEX IF NOT EXISTS idx_app_usage_time ON app_usage(start_time);
 CREATE INDEX IF NOT EXISTS idx_app_usage_bundle ON app_usage(bundle_id);
 CREATE INDEX IF NOT EXISTS idx_web_visits_time ON web_visits(visit_time);
 CREATE INDEX IF NOT EXISTS idx_messages_time ON messages(timestamp);
+CREATE INDEX IF NOT EXISTS idx_messages_handle ON messages(handle_id);
+CREATE INDEX IF NOT EXISTS idx_contacts_handle ON contacts(handle_id);
 CREATE INDEX IF NOT EXISTS idx_notifications_time ON notifications(timestamp);
 CREATE INDEX IF NOT EXISTS idx_bluetooth_time ON bluetooth_connections(start_time);
 CREATE INDEX IF NOT EXISTS idx_podcast_episodes_played ON podcast_episodes(last_played_at);

@@ -7,7 +7,9 @@ struct SystemTab: View {
 
     @StateObject private var dbService = DatabaseService.shared
     @State private var stats: SystemStats?
-    @State private var topApps: [(app: String, count: Int)] = []
+    @State private var topApps: [(app: String, duration: TimeInterval)] = []
+    @State private var deviceBreakdown: [(device: String, duration: TimeInterval)] = []
+    @State private var selectedDevice: String = "All Devices"
     @State private var isLoading = true
     @State private var error: Error?
 
@@ -42,10 +44,56 @@ struct SystemTab: View {
                         GridItem(.flexible()),
                         GridItem(.flexible())
                     ], spacing: 16) {
-                        SystemStatCard(value: stats.totalEvents, label: "Total Events", color: .blue)
-                        SystemStatCard(value: stats.uniqueApps, label: "Unique Apps", color: .purple)
+                        SystemStatCard(value: formatDuration(stats.totalTime), label: "Total Usage Time", color: .blue)
+                        SystemStatCard(value: "\(stats.uniqueApps)", label: "Unique Apps", color: .purple)
                     }
                     .padding(.horizontal)
+
+                    // Device Breakdown
+                    if !deviceBreakdown.isEmpty && deviceBreakdown.count > 1 {
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("Usage by Device")
+                                .font(.headline)
+                                .padding(.horizontal)
+
+                            // Device Filter Picker
+                            Picker("Device", selection: $selectedDevice) {
+                                Text("All Devices").tag("All Devices")
+                                ForEach(deviceBreakdown, id: \.device) { item in
+                                    Text(item.device).tag(item.device)
+                                }
+                            }
+                            .pickerStyle(.segmented)
+                            .padding(.horizontal)
+
+                            // Device Breakdown Chart
+                            Chart {
+                                ForEach(deviceBreakdown, id: \.device) { item in
+                                    BarMark(
+                                        x: .value("Duration", item.duration / 3600),
+                                        y: .value("Device", item.device)
+                                    )
+                                    .foregroundStyle(.purple.gradient)
+                                }
+                            }
+                            .frame(height: CGFloat(deviceBreakdown.count * 50))
+                            .chartXAxis {
+                                AxisMarks { value in
+                                    AxisGridLine()
+                                    AxisTick()
+                                    AxisValueLabel {
+                                        if let hours = value.as(Double.self) {
+                                            Text("\(String(format: "%.1f", hours))h")
+                                        }
+                                    }
+                                }
+                            }
+                            .padding()
+                            .background(Color(.textBackgroundColor).opacity(0.3))
+                            .cornerRadius(12)
+                            .padding(.horizontal)
+                        }
+                    }
 
                     // Top Apps Chart
                     if !topApps.isEmpty {
@@ -57,7 +105,7 @@ struct SystemTab: View {
                             Chart {
                                 ForEach(Array(topApps.enumerated()), id: \.offset) { index, app in
                                     BarMark(
-                                        x: .value("Count", app.count),
+                                        x: .value("Duration", app.duration / 3600), // Convert to hours
                                         y: .value("App", formatAppName(app.app))
                                     )
                                     .foregroundStyle(.blue.gradient)
@@ -68,7 +116,11 @@ struct SystemTab: View {
                                 AxisMarks { value in
                                     AxisGridLine()
                                     AxisTick()
-                                    AxisValueLabel()
+                                    AxisValueLabel {
+                                        if let hours = value.as(Double.self) {
+                                            Text("\(String(format: "%.1f", hours))h")
+                                        }
+                                    }
                                 }
                             }
                             .chartYAxis {
@@ -94,7 +146,7 @@ struct SystemTab: View {
                                 AppRow(
                                     rank: index + 1,
                                     app: formatAppName(app.app),
-                                    count: app.count
+                                    duration: app.duration
                                 )
                             }
                         }
@@ -113,6 +165,9 @@ struct SystemTab: View {
         .onChange(of: endDate) { _ in
             Task { await loadData() }
         }
+        .onChange(of: selectedDevice) { _ in
+            Task { await loadData() }
+        }
     }
 
     private func loadData() async {
@@ -120,11 +175,16 @@ struct SystemTab: View {
         error = nil
 
         do {
-            async let systemStats = dbService.getSystemStats(startDate: startDate, endDate: endDate)
-            async let apps = dbService.getTopApps(startDate: startDate, endDate: endDate, limit: 10)
+            // Determine device filter
+            let deviceFilter = (selectedDevice == "All Devices") ? nil : selectedDevice
+
+            async let systemStats = dbService.getSystemStats(startDate: startDate, endDate: endDate, device: deviceFilter)
+            async let apps = dbService.getTopApps(startDate: startDate, endDate: endDate, limit: 10, device: deviceFilter)
+            async let devices = dbService.getDeviceBreakdown(startDate: startDate, endDate: endDate)
 
             self.stats = try await systemStats
             self.topApps = try await apps
+            self.deviceBreakdown = try await devices
         } catch {
             self.error = error
             print("Error loading system data: \(error)")
@@ -138,16 +198,29 @@ struct SystemTab: View {
         let components = bundleId.split(separator: ".")
         return components.last.map(String.init) ?? bundleId
     }
+
+    private func formatDuration(_ seconds: TimeInterval) -> String {
+        let hours = Int(seconds) / 3600
+        let minutes = (Int(seconds) % 3600) / 60
+
+        if hours > 0 {
+            return "\(hours)h \(minutes)m"
+        } else if minutes > 0 {
+            return "\(minutes)m"
+        } else {
+            return "<1m"
+        }
+    }
 }
 
 struct SystemStatCard: View {
-    let value: Int
+    let value: String
     let label: String
     let color: Color
 
     var body: some View {
         VStack(spacing: 8) {
-            Text("\(value)")
+            Text(value)
                 .font(.system(size: 42, weight: .bold, design: .rounded))
                 .foregroundColor(color)
 
@@ -165,7 +238,7 @@ struct SystemStatCard: View {
 struct AppRow: View {
     let rank: Int
     let app: String
-    let count: Int
+    let duration: TimeInterval
 
     var body: some View {
         HStack {
@@ -179,7 +252,7 @@ struct AppRow: View {
 
             Spacer()
 
-            Text("\(count) events")
+            Text(formatDuration(duration))
                 .font(.caption)
                 .foregroundColor(.secondary)
         }
@@ -188,5 +261,18 @@ struct AppRow: View {
         .background(Color(.textBackgroundColor).opacity(0.5))
         .cornerRadius(8)
         .padding(.horizontal)
+    }
+
+    private func formatDuration(_ seconds: TimeInterval) -> String {
+        let hours = Int(seconds) / 3600
+        let minutes = (Int(seconds) % 3600) / 60
+
+        if hours > 0 {
+            return "\(hours)h \(minutes)m"
+        } else if minutes > 0 {
+            return "\(minutes)m"
+        } else {
+            return "<1m"
+        }
     }
 }

@@ -53,3 +53,5 @@ QualifiedApp/QualifiedApp/Generated/quantified_coreFFI.modulemap
 # Claude AI context
 claude.md
 COMPLETION_SUMMARY.md
+
+*.scratch

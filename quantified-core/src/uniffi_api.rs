@@ -254,21 +254,39 @@ pub enum ExtractionError {
 impl From<Error> for ExtractionError {
     fn from(err: Error) -> Self {
         match err {
+            Error::DatabaseWithContext { operation, source_path, error, suggestion } => {
+                ExtractionError::DatabaseError {
+                    msg: format!("{}\n  Source: {}\n  Error: {}\n  {}", operation, source_path, error, suggestion),
+                }
+            }
             Error::Database(e) => ExtractionError::DatabaseError {
                 msg: e.to_string(),
             },
-            Error::Io(e) => ExtractionError::Other {
-                msg: e.to_string(),
-            },
-            Error::SourceNotFound => ExtractionError::SourceNotFound {
-                msg: "Source database not found".to_string(),
+            Error::SqlError { operation, query, error, suggestion } => {
+                let truncated_query = if query.len() > 200 {
+                    format!("{}...", &query[..200])
+                } else {
+                    query
+                };
+                ExtractionError::DatabaseError {
+                    msg: format!("{}\n  Query: {}\n  Error: {}\n  {}", operation, truncated_query, error, suggestion),
+                }
+            }
+            Error::SourceNotFound { paths } => ExtractionError::SourceNotFound {
+                msg: format!("Source database not found\n{}", paths),
             },
             Error::CopyFailed(msg) => ExtractionError::ExtractionFailed { msg },
             Error::PermissionDenied { path } => ExtractionError::PermissionDenied {
-                msg: path.display().to_string(),
+                msg: format!("{}\nGrant Full Disk Access in System Settings > Privacy & Security", path.display()),
             },
             Error::DatabaseNotFound(path) => ExtractionError::DatabaseError {
                 msg: format!("Database not found: {}", path.display()),
+            },
+            Error::IoWithContext { operation, path, error } => ExtractionError::Other {
+                msg: format!("{}\n  Path: {}\n  Error: {}", operation, path, error),
+            },
+            Error::Io(e) => ExtractionError::Other {
+                msg: e.to_string(),
             },
             Error::InvalidTimestamp(msg) => ExtractionError::Other { msg },
             Error::ExtractionFailed(msg) => ExtractionError::ExtractionFailed { msg },
@@ -362,14 +380,18 @@ fn create_source_result(
     extraction_result: Result<crate::types::ExtractionResult, crate::error::Error>,
 ) -> SourceResult {
     match extraction_result {
-        Ok(result) => SourceResult {
-            source_type,
-            source_name: source_type.name(),
-            records_added: result.records_added as u64,
-            records_skipped: result.records_skipped as u64,
-            success: true,
-            error_message: None,
-        },
+        Ok(result) => {
+            // Check the status field - extraction might have "failed" even though we got Ok
+            let success = matches!(result.status, crate::types::ExtractionStatus::Completed);
+            SourceResult {
+                source_type,
+                source_name: source_type.name(),
+                records_added: result.records_added as u64,
+                records_skipped: result.records_skipped as u64,
+                success,
+                error_message: result.error_message,
+            }
+        }
         Err(e) => SourceResult {
             source_type,
             source_name: source_type.name(),

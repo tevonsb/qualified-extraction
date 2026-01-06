@@ -46,10 +46,12 @@ struct DashboardView: View {
                     effectiveRange: $effectiveRange
                 )
             }
-            .padding()
+            .padding(.horizontal, 20)
+            .padding(.vertical, 16)
             .background(Color(nsColor: .windowBackgroundColor))
 
             Divider()
+                .padding(.bottom, 8)
 
             // Tab navigation
             TabView(selection: $selectedTab) {
@@ -89,6 +91,7 @@ struct DashboardView: View {
                 }
                 .tag(3)
             }
+            .padding(.top, 4)
         }
         .frame(minWidth: 900, minHeight: 700)
     }
